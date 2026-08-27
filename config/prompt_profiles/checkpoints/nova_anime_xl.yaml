@@ -1,0 +1,30 @@
+# Nova Anime XL — initial EXPERIMENTAL checkpoint profile (spec §6.1)
+#
+# Honesty rules applied:
+# - no invented sampler/steps/cfg claims (no benchmarks exist yet);
+# - no model-family score tags guessed;
+# - every note carries provenance;
+# - statuses reflect "identified, not yet validated".
+id: nova_anime_xl
+version: "1"
+kind: checkpoint
+label: Nova Anime XL（實驗中）
+checkpoint_filename: novaAnimeXL_ilV190.safetensors
+experimental: true
+profile_status: identified_but_untested
+usage_status: current_main_use_candidate
+recommendation_status: not_yet_recommended
+# no syntax override: inherits the selected dialect
+quality_prefix: []
+quality_suffix: []
+required_tags: []
+negative_tags: []
+prohibited_tags: []
+sampler_recommendations: {}
+notes:
+  - text: 檔名推斷屬 SDXL 系動漫模型；家族未經本機驗證。
+    provenance: inferred
+  - text: 使用者指定為目前主要試用候選；尚無任何實驗紀錄支持推薦。
+    provenance: user_observed
+  - text: 品質前綴、負向詞、取樣器建議皆留空——待實驗紀錄累積後再補，不預先猜測。
+    provenance: untested

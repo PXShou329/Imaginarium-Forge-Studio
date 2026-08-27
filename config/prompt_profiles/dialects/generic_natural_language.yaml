@@ -1,0 +1,34 @@
+# Generic natural-language dialect (spec §29.2)
+# Coherent English prose; model-independent; for checkpoints that follow
+# natural-language prompting.
+id: generic_natural_language
+version: "1"
+kind: dialect
+label: 通用自然語言方言
+syntax: natural_language
+block_order:
+  - subject_count
+  - adult_presentation
+  - identity
+  - face_hair_eyes
+  - distinguishing_features
+  - body
+  - outfit
+  - pose_expression
+  - camera_composition
+  - environment
+  - lighting
+  - style
+quality_prefix: []
+quality_suffix: []
+required_tags: []
+negative_tags:
+  - low quality
+  - deformed anatomy
+  - watermark
+  - text artifacts
+prohibited_tags: []
+sampler_recommendations: {}
+notes:
+  - text: 以連貫英文散文輸出；tag 區塊仍可供對照。
+    provenance: confirmed

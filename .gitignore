@@ -1,0 +1,60 @@
+# --- secrets & local config
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+*.pem
+*.key
+
+# --- python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+dist/
+build/
+*.egg-info/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# --- runtime data & private generated content (never commit)
+data/*
+!data/.gitkeep
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# --- private Golden Set cases (local-only; see goldenset/private/README.md)
+goldenset/private/*
+!goldenset/private/README.md
+
+# --- model files / weights (never commit; ADR-020, ADR-021)
+*.gguf
+*.safetensors
+*.ckpt
+*.pt
+*.onnx
+/models/
+
+# --- local runtime, test probes & handoff packages
+/work/
+*.log
+*.pid
+.codex-test-tmp-*/
+.tmp_*/
+.tmp-*/
+tmp*/
+*.zip
+*.tar
+*.tar.gz
+
+# --- OS noise
+.DS_Store
+Thumbs.db

@@ -1,0 +1,17 @@
+# Keep repository text stable across both Windows installations.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.zip binary
+*.7z binary
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
+*.gguf binary
+*.safetensors binary
+*.ckpt binary

@@ -1,0 +1,47 @@
+# Generic tag-based anime dialect (spec §29.1)
+# Conservative: no model-specific score tags, stable character-first layout,
+# suitable for UNKNOWN anime checkpoints.
+id: generic_tag_anime
+version: "1"
+kind: dialect
+label: 通用動漫 Tag 方言（保守）
+syntax: tag_based
+block_order:
+  - quality_prefix
+  - subject_count
+  - adult_presentation
+  - identity
+  - face_hair_eyes
+  - distinguishing_features
+  - body
+  - outfit
+  - pose_expression
+  - camera_composition
+  - environment
+  - lighting
+  - style
+  - quality_suffix
+quality_prefix:
+  - masterpiece
+  - best quality
+quality_prefix_mode: replace
+quality_suffix: []
+required_tags: []
+negative_tags:
+  - lowres
+  - bad anatomy
+  - bad hands
+  - missing fingers
+  - extra digits
+  - jpeg artifacts
+  - signature
+  - watermark
+  - username
+  - blurry
+prohibited_tags: []
+sampler_recommendations: {}
+notes:
+  - text: 保守 tag 排序；未針對任何特定 checkpoint 調整。
+    provenance: confirmed
+  - text: 不含模型專屬品質分數 tag（如 score_9 系列）。
+    provenance: confirmed
