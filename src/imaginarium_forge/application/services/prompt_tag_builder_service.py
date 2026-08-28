@@ -17,6 +17,16 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Final, Literal, cast
 
+from imaginarium_forge.application.services.clothing_tag_catalog import (
+    ACCESSORIES_ADULT,
+    ACCESSORIES_SAFE,
+    OUTFIT_ARCHETYPE_ADULT,
+    OUTFIT_ARCHETYPE_SAFE,
+    OUTFIT_MATERIALS_ADULT,
+    OUTFIT_MATERIALS_SAFE,
+    OUTFIT_PALETTE_ADULT,
+    OUTFIT_PALETTE_SAFE,
+)
 from imaginarium_forge.domain.character.biography_draft import (
     normalize_english_image_prompt,
 )
@@ -6396,6 +6406,26 @@ _CHARACTER_OPTION_EXTENSIONS_V10: Final[dict[str, tuple[TagOption, ...]]] = {
 }
 
 
+_CHARACTER_OPTION_EXTENSIONS_V11: Final[dict[str, tuple[TagOption, ...]]] = {
+    "outfit_archetype": (
+        *_extra_options(*OUTFIT_ARCHETYPE_SAFE),
+        *tuple(_adult_option(*value) for value in OUTFIT_ARCHETYPE_ADULT),
+    ),
+    "outfit_materials": (
+        *_extra_options(*OUTFIT_MATERIALS_SAFE),
+        *tuple(_adult_option(*value) for value in OUTFIT_MATERIALS_ADULT),
+    ),
+    "outfit_palette": (
+        *_extra_options(*OUTFIT_PALETTE_SAFE),
+        *tuple(_adult_option(*value) for value in OUTFIT_PALETTE_ADULT),
+    ),
+    "accessories": (
+        *_extra_options(*ACCESSORIES_SAFE),
+        *tuple(_adult_option(*value) for value in ACCESSORIES_ADULT),
+    ),
+}
+
+
 _BACKGROUND_OPTION_EXTENSIONS_V4: Final[dict[str, tuple[TagOption, ...]]] = {
     "location": _extra_options(
         ("opera_house", "歷史歌劇院", "ornate historic opera house"),
@@ -6945,37 +6975,40 @@ CHARACTER_CATEGORIES: Final[tuple[TagCategory, ...]] = _extend_categories(
                 _extend_categories(
                     _extend_categories(
                         _extend_categories(
-                            (
-                                *_order_character_categories(
-                                    _extend_categories(
+                            _extend_categories(
+                                (
+                                    *_order_character_categories(
                                         _extend_categories(
                                             _extend_categories(
-                                                _BASE_CHARACTER_CATEGORIES,
-                                                _CHARACTER_OPTION_EXTENSIONS,
+                                                _extend_categories(
+                                                    _BASE_CHARACTER_CATEGORIES,
+                                                    _CHARACTER_OPTION_EXTENSIONS,
+                                                ),
+                                                _CHARACTER_OPTION_EXTENSIONS_V2,
                                             ),
-                                            _CHARACTER_OPTION_EXTENSIONS_V2,
+                                            _CHARACTER_OPTION_EXTENSIONS_V3,
                                         ),
-                                        _CHARACTER_OPTION_EXTENSIONS_V3,
                                     ),
+                                    *_ANIMAL_TAXONOMY_CATEGORIES,
+                                    *_ADDITIONAL_CHARACTER_CATEGORIES,
+                                    *_NEW_CHARACTER_CATEGORIES,
+                                    *_CHARACTER_CATEGORIES_V9,
                                 ),
-                                *_ANIMAL_TAXONOMY_CATEGORIES,
-                                *_ADDITIONAL_CHARACTER_CATEGORIES,
-                                *_NEW_CHARACTER_CATEGORIES,
-                                *_CHARACTER_CATEGORIES_V9,
+                                _CHARACTER_OPTION_EXTENSIONS_V4,
                             ),
-                            _CHARACTER_OPTION_EXTENSIONS_V4,
+                            _CHARACTER_OPTION_EXTENSIONS_V5,
                         ),
-                        _CHARACTER_OPTION_EXTENSIONS_V5,
+                        _CHARACTER_OPTION_EXTENSIONS_V6,
                     ),
-                    _CHARACTER_OPTION_EXTENSIONS_V6,
+                    _CHARACTER_OPTION_EXTENSIONS_V7,
                 ),
-                _CHARACTER_OPTION_EXTENSIONS_V7,
+                _CHARACTER_OPTION_EXTENSIONS_V8,
             ),
-            _CHARACTER_OPTION_EXTENSIONS_V8,
+            _CHARACTER_OPTION_EXTENSIONS_V9,
         ),
-        _CHARACTER_OPTION_EXTENSIONS_V9,
+        _CHARACTER_OPTION_EXTENSIONS_V10,
     ),
-    _CHARACTER_OPTION_EXTENSIONS_V10,
+    _CHARACTER_OPTION_EXTENSIONS_V11,
 )
 BACKGROUND_CATEGORIES: Final[tuple[TagCategory, ...]] = _extend_categories(
     _extend_categories(
@@ -11983,13 +12016,40 @@ _LOWER_ADULT_ACTION_CATEGORIES: Final[frozenset[str]] = (
     _LOWER_ADULT_POSE_CATEGORIES | _LOWER_ADULT_EXPLICIT_ACTION_CATEGORIES
 )
 _UPPER_ANATOMY_OUTFITS: Final[frozenset[str]] = frozenset(
-    {"nude", "topless", "body_paint", "sheer_lingerie"}
+    {
+        "nude",
+        "topless",
+        "body_paint",
+        "sheer_lingerie",
+        "adult_outfit_transparent_bodystocking",
+        "bodystocking",
+        "sheer_bodysuit",
+        "cupless_bra",
+        "adult_open_cup_teddy",
+    }
 )
 _UPPER_VISIBILITY_OPTION_KEYS: Final[frozenset[tuple[str, str]]] = frozenset(
-    {("accessories", "adult_accessory_nipple_clamps")}
+    {
+        ("accessories", "nipple_jewelry"),
+        ("accessories", "adult_accessory_nipple_clamps"),
+        ("accessories", "adult_accessory_nipple_pasties"),
+        ("accessories", "adult_accessory_chain_pasties"),
+    }
 )
-_LOWER_ANATOMY_OUTFITS: Final[frozenset[str]] = frozenset({"nude", "body_paint", "sheer_lingerie"})
-_LOWER_EXPLICIT_ACTION_OUTFITS: Final[frozenset[str]] = frozenset({"nude", "body_paint"})
+_LOWER_ANATOMY_OUTFITS: Final[frozenset[str]] = frozenset(
+    {
+        "nude",
+        "body_paint",
+        "sheer_lingerie",
+        "adult_outfit_transparent_bodystocking",
+        "bodystocking",
+        "sheer_bodysuit",
+        "crotchless_panties",
+    }
+)
+_LOWER_EXPLICIT_ACTION_OUTFITS: Final[frozenset[str]] = frozenset(
+    {"nude", "body_paint", "crotchless_panties"}
+)
 _OPTIONAL_ADULT_ANATOMY_CATEGORIES: Final[frozenset[str]] = (
     _UPPER_ADULT_ANATOMY_CATEGORIES | _LOWER_ADULT_ANATOMY_CATEGORIES
 )
@@ -12000,7 +12060,9 @@ _BREAST_ADULT_ACTION_CATEGORIES: Final[frozenset[str]] = frozenset(
         "adult_female_lactation_action",
     }
 )
-_EXPOSED_BREAST_ACTION_OUTFITS: Final[frozenset[str]] = frozenset({"nude", "topless", "body_paint"})
+_EXPOSED_BREAST_ACTION_OUTFITS: Final[frozenset[str]] = frozenset(
+    {"nude", "topless", "body_paint", "cupless_bra", "adult_open_cup_teddy"}
+)
 _OPTIONAL_ADULT_ACTION_CATEGORIES: Final[frozenset[str]] = _BREAST_ADULT_ACTION_CATEGORIES | {
     "adult_female_expression",
     "adult_aftercare_action",

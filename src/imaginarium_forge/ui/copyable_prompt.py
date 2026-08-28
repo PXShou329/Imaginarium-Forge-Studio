@@ -56,7 +56,7 @@ def build_copy_button_html(
     width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
     background: transparent; color-scheme: dark;
   }}
-  .copy-row {{ display: flex; flex-direction: column; align-items: stretch; gap: 5px; }}
+  .copy-row {{ display: flex; align-items: stretch; height: 48px; }}
   button {{
     width: 100%; min-height: 48px; padding: 9px 12px; border: 1px solid #9a652d;
     border-radius: 10px; background: #f2bf74; color: #2a190f; font: 700 14px/1.2 sans-serif;
@@ -68,7 +68,11 @@ def build_copy_button_html(
     border-color: #51434b; background: #2b242a; color: #b9aaa1;
     opacity: 1; cursor: not-allowed; box-shadow: none;
   }}
-  .status {{ min-height: 16px; color: #d8c9bd; font: 12px/1.2 sans-serif; text-align: center; }}
+  .status {{
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%);
+    border: 0; white-space: nowrap;
+  }}
 </style>
 </head>
 <body>
@@ -150,7 +154,7 @@ def render_copyable_prompt(
     prompt_column, copy_column = st.columns(
         [5, 1.25],
         gap="small",
-        vertical_alignment="center",
+        vertical_alignment="top",
     )
     with prompt_column:
         st.code(prompt if prompt.strip() else _EMPTY_PROMPT_COPY, language=None, wrap_lines=True)
@@ -160,7 +164,7 @@ def render_copyable_prompt(
             key=key,
             help_text=help_text,
         )
-        st.iframe(document, height=92, tab_index=0)
+        st.iframe(document, height=48, tab_index=0)
 
 
 __all__ = ["build_copy_button_html", "render_copyable_prompt"]
