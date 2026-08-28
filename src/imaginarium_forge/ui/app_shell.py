@@ -118,9 +118,10 @@ def render_topbar(
     group_key = group_for_route(current_route)
     group = next(group for group in NAVIGATION_GROUPS if group.key == group_key)
     project_context = project_name or "自由創作"
+    breadcrumb_context = f"<small>{escape(project_name)}</small>" if project_name else ""
 
     with st.container(key="app_topbar"):
-        controls = st.columns((0.42, 0.42, 0.42, 3.1, 1.05, 1.08, 1.0))
+        controls = st.columns((0.42, 0.42, 0.42, 3.0, 0.82, 1.05, 1.08, 1.0))
         controls[0].button(
             "←",
             key="shell_back",
@@ -153,9 +154,17 @@ def render_topbar(
             '<nav class="if-breadcrumb" aria-label="目前位置">'
             f'<span>{escape(group.label)}</span><i aria-hidden="true">›</i>'
             f'<strong>{escape(ROUTE_LABELS[current_route])}</strong>'
-            f'<small>{escape(project_context)}</small></nav>'
+            f"{breadcrumb_context}</nav>"
         )
-        with controls[4].popover("⌕ 搜尋", use_container_width=True):
+        controls[4].button(
+            "主頁",
+            key="shell_home",
+            help="回到首頁",
+            on_click=queue_navigation,
+            args=("首頁",),
+            use_container_width=True,
+        )
+        with controls[5].popover("⌕ 搜尋", use_container_width=True):
             st.markdown("**前往功能**")
             st.caption("搜尋範圍是本機應用程式內的工作頁，不會送出任何內容。")
             target = st.selectbox(
@@ -174,7 +183,7 @@ def render_topbar(
                 args=(target,),
                 use_container_width=True,
             )
-        with controls[5].popover("＋ 建立", use_container_width=True):
+        with controls[6].popover("＋ 建立", use_container_width=True):
             st.markdown("**直接開始**")
             quick_routes = (
                 (prompt_tag_builder.PAGE_KEY, "懶人標籤生成器"),
@@ -191,7 +200,7 @@ def render_topbar(
                     args=(route,),
                     use_container_width=True,
                 )
-        with controls[6].popover("● 狀態", use_container_width=True):
+        with controls[7].popover("● 狀態", use_container_width=True):
             openai = read_openai_session_settings(st.session_state)
             st.markdown("**創作環境**")
             st.caption(f"作品：{project_context}")

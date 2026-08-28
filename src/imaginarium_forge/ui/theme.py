@@ -787,9 +787,32 @@ hr {
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.045), 0 22px 55px rgba(0, 0, 0, 0.25);
 }
 
-.st-key-home_hero h1 {
-  margin-top: 0.35rem !important;
-  font-size: clamp(2rem, 3.8vw, 3.5rem) !important;
+.st-key-home_hero_message {
+  container-type: inline-size;
+  width: min(100%, 38rem);
+  margin-inline: auto;
+  text-align: center;
+}
+
+.st-key-home_hero_message h1 {
+  margin: 0.35rem 0 0.45rem !important;
+  font-size: clamp(1.15rem, 8.7cqw, 3.15rem) !important;
+  line-height: 1.1 !important;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.st-key-home_hero_message [data-testid="stMarkdownContainer"] p {
+  width: min(100%, 34rem);
+  margin-inline: auto;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.st-key-home_hero .if-badges {
+  width: min(100%, 34rem);
+  justify-content: center;
+  margin: 0.85rem auto 1.2rem;
 }
 
 .st-key-home_hero [data-testid="stImage"] {
@@ -802,6 +825,12 @@ hr {
 .st-key-home_hero [data-testid="stImage"] img {
   min-height: 22rem;
   object-fit: cover;
+}
+
+/* The dashboard illustration is decorative context, not an image-inspection
+   surface.  Keep Streamlit's fullscreen affordance off this one image only. */
+.st-key-home_hero button[aria-label="Fullscreen"] {
+  display: none !important;
 }
 
 .if-section-heading {

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import random
-from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from functools import cache, lru_cache
 from typing import Final, Literal, cast
@@ -642,72 +641,19 @@ def _option_display_label(label: str, *, category_is_adult_only: bool) -> str:
     return label
 
 
-def _duplicate_option_display_labels() -> frozenset[str]:
-    """Find contextual Chinese labels that would otherwise look duplicated."""
-
-    labels = (
-        _option_display_label(
-            option.label_zh,
-            category_is_adult_only=_is_adult_only_category(category),
-        )
-        for category in (*CHARACTER_CATEGORIES, *BACKGROUND_CATEGORIES, *NEGATIVE_CATEGORIES)
-        for option in category.options
-    )
-    counts = Counter(labels)
-    return frozenset(label for label, count in counts.items() if count > 1)
-
-
-_DUPLICATE_OPTION_DISPLAY_LABELS: Final = _duplicate_option_display_labels()
-
-
-def _duplicate_category_context_labels() -> frozenset[str]:
-    contextual_labels: list[str] = []
-    for category in (*CHARACTER_CATEGORIES, *BACKGROUND_CATEGORIES, *NEGATIVE_CATEGORIES):
-        pure_adult = _is_adult_only_category(category)
-        category_label = category.label_zh.removesuffix(_ADULT_LABEL_SUFFIX).rstrip()
-        for option in category.options:
-            label = _option_display_label(
-                option.label_zh,
-                category_is_adult_only=pure_adult,
-            )
-            if label in _DUPLICATE_OPTION_DISPLAY_LABELS:
-                contextual_labels.append(f"{category_label}・{label}")
-    counts = Counter(contextual_labels)
-    return frozenset(label for label, count in counts.items() if count > 1)
-
-
-_DUPLICATE_CATEGORY_CONTEXT_LABELS: Final = _duplicate_category_context_labels()
-_CATEGORY_CONTEXT_LABEL_OVERRIDES: Final[dict[str, str]] = {
-    "character_style": "角色美術",
-    "background_style": "背景美術",
-    "character_detail": "角色細節",
-    "background_detail": "背景細節",
-}
-
-
 def _contextual_option_display_label(
     category: TagCategory,
     option: TagOption,
     *,
     category_is_adult_only: bool,
 ) -> str:
-    """Qualify only colliding labels while preserving concise unique pills."""
+    """Use the category heading as context and keep every option pill concise."""
 
-    label = _option_display_label(
+    del category
+    return _option_display_label(
         option.label_zh,
         category_is_adult_only=category_is_adult_only,
     )
-    if label not in _DUPLICATE_OPTION_DISPLAY_LABELS:
-        return label
-    category_label = category.label_zh.removesuffix(_ADULT_LABEL_SUFFIX).rstrip()
-    contextual = f"{category_label}・{label}"
-    if contextual in _DUPLICATE_CATEGORY_CONTEXT_LABELS:
-        short_context = _CATEGORY_CONTEXT_LABEL_OVERRIDES.get(
-            category.key,
-            f"{category.group}・{category_label}",
-        )
-        return f"{short_context}・{label}"
-    return contextual
 
 
 def _render_local_styles() -> None:
@@ -867,15 +813,33 @@ def _render_local_styles() -> None:
         }}
         [class*="st-key-{STATE_PREFIX}_tag_category_"] {{
             container: if-tag-category / inline-size;
+            padding-block: 0.2rem 0.4rem;
+        }}
+        [class*="st-key-{STATE_PREFIX}_tag_category_"]
+        [data-testid="stButtonGroup"] > [data-testid="stWidgetLabel"] {{
+            margin-bottom: 0.75rem !important;
+            color: var(--forge-text) !important;
+        }}
+        [class*="st-key-{STATE_PREFIX}_tag_category_"]
+        [data-testid="stButtonGroup"] > [data-testid="stWidgetLabel"]
+        [data-testid="stMarkdownContainer"],
+        [class*="st-key-{STATE_PREFIX}_tag_category_"]
+        [data-testid="stButtonGroup"] > [data-testid="stWidgetLabel"]
+        [data-testid="stMarkdownContainer"] p {{
+            color: inherit !important;
+            font-size: 1rem !important;
+            font-weight: 700 !important;
+            line-height: 1.4 !important;
         }}
         [class*="st-key-{STATE_PREFIX}_tag_category_"]
         [data-testid="stButtonGroup"] > :is([role="radiogroup"], [role="toolbar"]) {{
             display: grid !important;
-            grid-template-columns: repeat(8, 8.5rem) !important;
+            grid-template-columns: repeat(8, 8.625rem) !important;
             width: 100% !important;
             max-width: none !important;
             justify-content: space-between !important;
-            gap: 0.375rem !important;
+            column-gap: 0.25rem !important;
+            row-gap: 0.625rem !important;
         }}
         [class*="st-key-{STATE_PREFIX}_tag_category_"]
         [data-testid="stButtonGroup"]
@@ -920,13 +884,13 @@ def _render_local_styles() -> None:
         @container if-tag-category (max-width: 72rem) {{
             [class*="st-key-{STATE_PREFIX}_tag_category_"]
             [data-testid="stButtonGroup"] > :is([role="radiogroup"], [role="toolbar"]) {{
-                grid-template-columns: repeat(4, 8.5rem) !important;
+                grid-template-columns: repeat(4, 8.625rem) !important;
             }}
         }}
         @container if-tag-category (max-width: 35rem) {{
             [class*="st-key-{STATE_PREFIX}_tag_category_"]
             [data-testid="stButtonGroup"] > :is([role="radiogroup"], [role="toolbar"]) {{
-                grid-template-columns: repeat(2, 8.5rem) !important;
+                grid-template-columns: repeat(2, 8.625rem) !important;
             }}
         }}
         @container if-tag-category (max-width: 18rem) {{

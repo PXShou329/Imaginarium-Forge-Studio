@@ -227,10 +227,12 @@ def _hero(current: Project | None, *, has_projects: bool) -> None:
                 '<div class="if-kicker">IMAGINARIUM FORGE · 本機創作工作室</div>',
                 unsafe_allow_html=True,
             )
-            st.title("今天想打造什麼故事宇宙？")
-            st.markdown(
-                "把角色、世界、故事與提示詞整理在同一間書房；AI 只提出候選，正式內容永遠由你決定。"
-            )
+            with st.container(key="home_hero_message"):
+                st.title("今天想打造什麼故事 ?")
+                st.markdown(
+                    "把角色、世界、故事與提示詞整理在同一間書房；"
+                    "AI 只提出候選，正式內容永遠由你決定。"
+                )
             st.html(
                 '<div class="if-badges">'
                 '<span class="if-badge teal">文字預設留在本機</span>'
