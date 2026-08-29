@@ -145,8 +145,15 @@ def render_copyable_prompt(
     *,
     key: str | None = None,
     help_text: str | None = None,
-) -> None:
-    """Render a labelled prompt block and a visible copy button beside it."""
+    editable_key: str | None = None,
+    editor_height: int = 112,
+) -> str:
+    """Render a labelled prompt block and return the text shown beside its copy control.
+
+    Callers may provide ``editable_key`` to replace the read-only code block
+    with a directly editable text area.  The copy iframe is always built from
+    the value returned by that text area, never from a stale generated value.
+    """
 
     st.html(f'<div style="font-weight:700; margin:.25rem 0 .35rem">{escape(label)}</div>')
     if help_text:
@@ -156,15 +163,34 @@ def render_copyable_prompt(
         gap="small",
         vertical_alignment="top",
     )
+    rendered_prompt = prompt
     with prompt_column:
-        st.code(prompt if prompt.strip() else _EMPTY_PROMPT_COPY, language=None, wrap_lines=True)
+        if editable_key is None:
+            st.code(
+                prompt if prompt.strip() else _EMPTY_PROMPT_COPY,
+                language=None,
+                wrap_lines=True,
+            )
+        else:
+            if editable_key not in st.session_state:
+                st.session_state[editable_key] = prompt
+            rendered_prompt = str(
+                st.text_area(
+                    f"{label}（可直接編輯）",
+                    key=editable_key,
+                    height=max(80, editor_height),
+                    placeholder=_EMPTY_PROMPT_COPY,
+                    label_visibility="collapsed",
+                )
+            )
     with copy_column:
         document = build_copy_button_html(
-            prompt,
+            rendered_prompt,
             key=key,
             help_text=help_text,
         )
         st.iframe(document, height=48, tab_index=0)
+    return rendered_prompt
 
 
 __all__ = ["build_copy_button_html", "render_copyable_prompt"]

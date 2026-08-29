@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import random
+from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from functools import cache, lru_cache
 from typing import Final, Literal, cast
+from unicodedata import normalize
 
 import streamlit as st
 
@@ -77,6 +79,26 @@ NEGATIVE_OUTPUT_STATE_KEY = f"{STATE_PREFIX}_negative_output"
 COMBINED_OUTPUT_STATE_KEY = f"{STATE_PREFIX}_combined_output"
 CHARACTER_OUTPUT_CONTEXT_STATE_KEY = f"{STATE_PREFIX}_character_output_context"
 SPECIES_TRANSLATION_HOOK_STATE_KEY = f"{STATE_PREFIX}_species_translation_hook"
+CHARACTER_EDITOR_STATE_KEY = f"{STATE_PREFIX}_character_prompt_editor"
+BACKGROUND_EDITOR_STATE_KEY = f"{STATE_PREFIX}_background_prompt_editor"
+NEGATIVE_EDITOR_STATE_KEY = f"{STATE_PREFIX}_negative_prompt_editor"
+_CHARACTER_EDITOR_REROLL_MANUAL_STATE_KEY = (
+    f"{STATE_PREFIX}_character_prompt_editor_reroll_manual"
+)
+
+_PROMPT_EDITOR_STATE_KEYS: Final[dict[str, str]] = {
+    CHARACTER_OUTPUT_STATE_KEY: CHARACTER_EDITOR_STATE_KEY,
+    BACKGROUND_OUTPUT_STATE_KEY: BACKGROUND_EDITOR_STATE_KEY,
+    NEGATIVE_OUTPUT_STATE_KEY: NEGATIVE_EDITOR_STATE_KEY,
+}
+_PROMPT_EDITOR_BASELINE_STATE_KEYS: Final[dict[str, str]] = {
+    output_key: f"{editor_key}_generated_baseline"
+    for output_key, editor_key in _PROMPT_EDITOR_STATE_KEYS.items()
+}
+_PROMPT_EDITOR_DURABLE_STATE_KEYS: Final[dict[str, str]] = {
+    output_key: f"{editor_key}_saved"
+    for output_key, editor_key in _PROMPT_EDITOR_STATE_KEYS.items()
+}
 
 _CUSTOM_SPECIES_ZH_STATE_KEYS: Final[dict[CharacterIdentityMode, str]] = {
     "beast_humanoid": f"{STATE_PREFIX}_beast_humanoid_custom_species_zh",
@@ -142,6 +164,13 @@ _PAGE_WIDGET_DURABLE_STATE_KEYS: Final[dict[str, str]] = {
     CHARACTER_CUSTOM_STATE_KEY: _DURABLE_CHARACTER_CUSTOM_STATE_KEY,
     BACKGROUND_CUSTOM_STATE_KEY: _DURABLE_BACKGROUND_CUSTOM_STATE_KEY,
     NEGATIVE_CUSTOM_STATE_KEY: _DURABLE_NEGATIVE_CUSTOM_STATE_KEY,
+    CHARACTER_EDITOR_STATE_KEY: _PROMPT_EDITOR_DURABLE_STATE_KEYS[
+        CHARACTER_OUTPUT_STATE_KEY
+    ],
+    BACKGROUND_EDITOR_STATE_KEY: _PROMPT_EDITOR_DURABLE_STATE_KEYS[
+        BACKGROUND_OUTPUT_STATE_KEY
+    ],
+    NEGATIVE_EDITOR_STATE_KEY: _PROMPT_EDITOR_DURABLE_STATE_KEYS[NEGATIVE_OUTPUT_STATE_KEY],
     CHARACTER_GROUP_STATE_KEY: _DURABLE_GROUP_NAVIGATION_STATE_KEYS["character"],
     BACKGROUND_GROUP_STATE_KEY: _DURABLE_GROUP_NAVIGATION_STATE_KEYS["background"],
 }
@@ -558,6 +587,9 @@ def _restore_mirrored_page_widget(widget_key: str) -> None:
         CHARACTER_CUSTOM_STATE_KEY,
         BACKGROUND_CUSTOM_STATE_KEY,
         NEGATIVE_CUSTOM_STATE_KEY,
+        CHARACTER_EDITOR_STATE_KEY,
+        BACKGROUND_EDITOR_STATE_KEY,
+        NEGATIVE_EDITOR_STATE_KEY,
         CHARACTER_GROUP_STATE_KEY,
         BACKGROUND_GROUP_STATE_KEY,
     } and not isinstance(value, str)
@@ -572,7 +604,7 @@ def _restore_page_widget_state() -> None:
     _restore_mirrored_page_widget(MODE_STATE_KEY)
     raw_mode = st.session_state.get(MODE_STATE_KEY, "character")
     mode = raw_mode if raw_mode in _MODE_LABELS else "character"
-    keys = [TITLE_STATE_KEY, NEGATIVE_CUSTOM_STATE_KEY]
+    keys = [TITLE_STATE_KEY, NEGATIVE_CUSTOM_STATE_KEY, NEGATIVE_EDITOR_STATE_KEY]
     if mode in {"character", "both"}:
         keys.extend(
             (
@@ -582,6 +614,7 @@ def _restore_page_widget_state() -> None:
                 CHARACTER_NAME_STATE_KEY,
                 CHARACTER_CUSTOM_STATE_KEY,
                 CHARACTER_GROUP_STATE_KEY,
+                CHARACTER_EDITOR_STATE_KEY,
             )
         )
     if mode in {"background", "both"}:
@@ -589,6 +622,7 @@ def _restore_page_widget_state() -> None:
             (
                 BACKGROUND_CUSTOM_STATE_KEY,
                 BACKGROUND_GROUP_STATE_KEY,
+                BACKGROUND_EDITOR_STATE_KEY,
             )
         )
     for widget_key in keys:
@@ -849,6 +883,14 @@ def _render_local_styles() -> None:
     st.markdown(
         f"""
         <style>
+        .st-key-{CHARACTER_EDITOR_STATE_KEY} textarea,
+        .st-key-{BACKGROUND_EDITOR_STATE_KEY} textarea,
+        .st-key-{NEGATIVE_EDITOR_STATE_KEY} textarea {{
+            resize: none !important;
+            font-family: ui-monospace, SFMono-Regular, Consolas,
+                "Liberation Mono", monospace !important;
+            line-height: 1.55 !important;
+        }}
         .st-key-{STATE_PREFIX}_character_fill_random button,
         .st-key-{STATE_PREFIX}_background_fill_random button {{
             background: linear-gradient(180deg, #68443b, #4c302b) !important;
@@ -1310,6 +1352,148 @@ def _handle_custom_species_zh_change(identity_mode: CharacterIdentityMode) -> No
 def _stored_output(key: str) -> str:
     raw = st.session_state.get(key, "")
     return str(raw) if raw else ""
+
+
+def _prompt_fragments(prompt: str) -> tuple[str, ...]:
+    """Split comma/newline Prompt text without rewriting the author's fragments."""
+
+    return tuple(
+        fragment.strip()
+        for line in prompt.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+        for fragment in line.split(",")
+        if fragment.strip()
+    )
+
+
+def _prompt_fragment_identity(fragment: str) -> str:
+    """Return a comparison-only identity while preserving the displayed spelling."""
+
+    return " ".join(normalize("NFKC", fragment).split()).casefold()
+
+
+def _manual_prompt_fragments(editor_text: str, generated_prompt: str) -> tuple[str, ...]:
+    """Extract author-added fragments from an editor containing generated Prompt text."""
+
+    remaining_generated = Counter(
+        _prompt_fragment_identity(fragment) for fragment in _prompt_fragments(generated_prompt)
+    )
+    manual: list[str] = []
+    for fragment in _prompt_fragments(editor_text):
+        identity = _prompt_fragment_identity(fragment)
+        if remaining_generated[identity] > 0:
+            remaining_generated[identity] -= 1
+        else:
+            manual.append(fragment)
+    return tuple(manual)
+
+
+def _merge_generated_and_manual_prompt(
+    generated_prompt: str,
+    manual_fragments: Sequence[str],
+) -> str:
+    """Append every author fragment after fresh generated tags in authored order.
+
+    A manual fragment may intentionally equal a generated fragment.  Keeping
+    that extra occurrence preserves the author's intent across a later tag
+    removal; silently absorbing it here would make it impossible to recover.
+    """
+
+    generated = generated_prompt.strip().rstrip(",")
+    appendable = tuple(fragment.strip() for fragment in manual_fragments if fragment.strip())
+    manual = ", ".join(appendable)
+    if generated and manual:
+        return f"{generated}, {manual}"
+    return generated or manual
+
+
+def _queue_character_editor_manual_for_reroll() -> None:
+    """Carry authored fragments across the identity branch chosen by full reroll.
+
+    Identity is otherwise a safety context boundary: an explicit identity
+    switch resets the editor.  Full reroll also changes identity internally,
+    but from the author's perspective it is a tag refresh, so it gets this
+    one-shot exception without weakening explicit context transitions.
+    """
+
+    baseline_key = _PROMPT_EDITOR_BASELINE_STATE_KEYS[CHARACTER_OUTPUT_STATE_KEY]
+    previous_generated_source = st.session_state.get(baseline_key)
+    if not (
+        isinstance(previous_generated_source, tuple)
+        and len(previous_generated_source) == 2
+        and isinstance(previous_generated_source[0], str)
+    ):
+        st.session_state.pop(_CHARACTER_EDITOR_REROLL_MANUAL_STATE_KEY, None)
+        return
+    editor_text = str(st.session_state.get(CHARACTER_EDITOR_STATE_KEY, ""))
+    st.session_state[_CHARACTER_EDITOR_REROLL_MANUAL_STATE_KEY] = (
+        _manual_prompt_fragments(editor_text, previous_generated_source[0])
+    )
+
+
+def _sync_prompt_editor(
+    output_key: str,
+    generated_prompt: str,
+    *,
+    context: str | None = None,
+) -> str:
+    """Keep direct edits until the generated source for that field changes.
+
+    A normal Streamlit rerun must not erase text the author just typed.  When a
+    tag changes within the same safety context, generated fragments are rebuilt
+    and author-added comma/newline fragments are moved behind them.  A gender,
+    identity, adult-mode, or Prompt-mode context change still resets the editor
+    so stale manual text cannot cross that boundary.
+    """
+
+    editor_key = _PROMPT_EDITOR_STATE_KEYS[output_key]
+    baseline_key = _PROMPT_EDITOR_BASELINE_STATE_KEYS[output_key]
+    durable_key = _PROMPT_EDITOR_DURABLE_STATE_KEYS[output_key]
+    generated_source = (generated_prompt, context)
+    previous_generated_source = st.session_state.get(baseline_key)
+    reroll_manual: tuple[str, ...] | None = None
+    if output_key == CHARACTER_OUTPUT_STATE_KEY:
+        raw_reroll_manual = st.session_state.pop(
+            _CHARACTER_EDITOR_REROLL_MANUAL_STATE_KEY,
+            None,
+        )
+        if isinstance(raw_reroll_manual, tuple) and all(
+            isinstance(fragment, str) for fragment in raw_reroll_manual
+        ):
+            reroll_manual = raw_reroll_manual
+    if editor_key not in st.session_state:
+        next_editor = generated_prompt
+    elif previous_generated_source != generated_source:
+        previous_generated = ""
+        previous_context: object = object()
+        if (
+            isinstance(previous_generated_source, tuple)
+            and len(previous_generated_source) == 2
+            and isinstance(previous_generated_source[0], str)
+        ):
+            previous_generated = previous_generated_source[0]
+            previous_context = previous_generated_source[1]
+        if previous_context == context:
+            manual_fragments = _manual_prompt_fragments(
+                str(st.session_state.get(editor_key, "")),
+                previous_generated,
+            )
+            next_editor = _merge_generated_and_manual_prompt(
+                generated_prompt,
+                manual_fragments,
+            )
+        elif reroll_manual is not None:
+            next_editor = _merge_generated_and_manual_prompt(
+                generated_prompt,
+                reroll_manual,
+            )
+        else:
+            next_editor = generated_prompt
+    else:
+        next_editor = str(st.session_state.get(editor_key, ""))
+    _write_session_value_if_changed(editor_key, next_editor)
+    _write_session_value_if_changed(durable_key, next_editor)
+    _write_session_value_if_changed(baseline_key, generated_source)
+    return str(st.session_state.get(editor_key, ""))
 
 
 def _keep_last_valid_output(
@@ -2542,6 +2726,7 @@ def _reroll_character(
         return
 
     identity_mode, random_categories, randomized, required_groups = candidate
+    _queue_character_editor_manual_for_reroll()
     st.session_state[IDENTITY_MODE_STATE_KEY] = identity_mode
     _remember_page_widget_value(IDENTITY_MODE_STATE_KEY)
     _clear_selections(
@@ -2920,13 +3105,30 @@ def _download_text(
         sections.append(f"草稿標題\n{title}")
     if name and mode in {"character", "both"}:
         sections.append(f"角色名稱\n{name}")
-    if mode in {"character", "both"} and character_prompt:
+    if mode in {"character", "both"} and character_prompt.strip():
         sections.append(f"Character prompt\n{character_prompt}")
-    if mode in {"background", "both"} and background_prompt:
+    if mode in {"background", "both"} and background_prompt.strip():
         sections.append(f"Background prompt\n{background_prompt}")
-    if negative_prompt:
+    if negative_prompt.strip():
         sections.append(f"Negative prompt\n{negative_prompt}")
     return "\n\n".join(sections).rstrip() + "\n"
+
+
+def _positive_prompt_ready(
+    *,
+    mode: PromptMode,
+    character_prompt: str,
+    background_prompt: str,
+) -> bool:
+    """Require every positive Prompt represented by the selected output kind."""
+
+    has_character = bool(character_prompt.strip())
+    has_background = bool(background_prompt.strip())
+    if mode == "character":
+        return has_character
+    if mode == "background":
+        return has_background
+    return has_character and has_background
 
 
 def _build_combined_scene(
@@ -2983,14 +3185,24 @@ def _handoff_to_prompt_scratch(
     )
     from imaginarium_forge.ui.pages import prompt_scratch
 
+    if not _positive_prompt_ready(
+        mode=mode,
+        character_prompt=character_prompt,
+        background_prompt=background_prompt,
+    ):
+        raise ValueError("The selected Prompt kind requires non-empty positive Prompt text.")
+    if mode in {"character", "both"} and gender is None:
+        raise ValueError("Character Prompt handoff requires an explicit character gender.")
+
     kind = {
         "character": PromptScratchKind.CHARACTER,
         "background": PromptScratchKind.BACKGROUND,
         "both": PromptScratchKind.BOTH,
     }[mode]
     notes = "由懶人標籤生成器建立。"
-    if negative_prompt:
-        notes += f"\n\nNegative prompt:\n{negative_prompt}"
+    clean_negative_prompt = negative_prompt.strip()
+    if clean_negative_prompt:
+        notes += f"\n\nNegative prompt:\n{clean_negative_prompt}"
     st.session_state[prompt_scratch.PENDING_SELECTION_STATE_KEY] = "__new__"
     st.session_state[prompt_scratch.BOUND_STATE_KEY] = "__new__"
     pending_form: dict[str, object] = {
@@ -3189,25 +3401,53 @@ def render() -> None:
             help_text="協調角色、環境、鏡頭與風格後，組成同一個場景 Prompt。",
         )
     if mode in {"character", "both"}:
-        render_copyable_prompt(
+        _sync_prompt_editor(
+            CHARACTER_OUTPUT_STATE_KEY,
+            character_prompt,
+            context=(
+                str(st.session_state.get(CHARACTER_OUTPUT_CONTEXT_STATE_KEY, ""))
+                if gender is not None
+                else "unselected"
+            ),
+        )
+        character_prompt = render_copyable_prompt(
             "角色圖 Prompt",
             character_prompt,
             key="prompt-tag-builder-character",
-            help_text="全英文、逗號分隔；右側按鈕可直接複製。",
+            help_text=(
+                "可直接輸入或修改；同一角色設定下更動標籤時，手動新增內容會移到最新組合的最後。"
+                "右側按鈕可直接複製。"
+            ),
+            editable_key=CHARACTER_EDITOR_STATE_KEY,
+            editor_height=152,
         )
+        _remember_page_widget_value(CHARACTER_EDITOR_STATE_KEY)
     if mode in {"background", "both"}:
-        render_copyable_prompt(
+        _sync_prompt_editor(BACKGROUND_OUTPUT_STATE_KEY, background_prompt)
+        background_prompt = render_copyable_prompt(
             "背景圖 Prompt",
             background_prompt,
             key="prompt-tag-builder-background",
-            help_text="可單獨複製到任何圖片生成工具。",
+            help_text=(
+                "可直接輸入或修改；更動背景標籤時，手動新增內容會移到最新組合的最後。"
+            ),
+            editable_key=BACKGROUND_EDITOR_STATE_KEY,
+            editor_height=152,
         )
-    render_copyable_prompt(
+        _remember_page_widget_value(BACKGROUND_EDITOR_STATE_KEY)
+    _sync_prompt_editor(NEGATIVE_OUTPUT_STATE_KEY, negative_prompt, context=mode)
+    negative_prompt = render_copyable_prompt(
         "Negative Prompt",
         negative_prompt,
         key="prompt-tag-builder-negative",
-        help_text="負面提示詞獨立使用，不會混入正向 Prompt。",
+        help_text=(
+            "可直接輸入或修改；更動負面標籤時，手動新增內容會移到最新組合的最後，"
+            "且不會混入正向 Prompt。"
+        ),
+        editable_key=NEGATIVE_EDITOR_STATE_KEY,
+        editor_height=112,
     )
+    _remember_page_widget_value(NEGATIVE_EDITOR_STATE_KEY)
 
     payload = _download_text(
         mode=mode,
@@ -3215,12 +3455,13 @@ def render() -> None:
         background_prompt=background_prompt,
         negative_prompt=negative_prompt,
     )
-    relevant_prompt = (
-        character_prompt
-        if mode == "character"
-        else background_prompt
-        if mode == "background"
-        else combined_prompt
+    positive_prompt_ready = _positive_prompt_ready(
+        mode=mode,
+        character_prompt=character_prompt,
+        background_prompt=background_prompt,
+    )
+    handoff_ready = positive_prompt_ready and (
+        mode == "background" or gender is not None
     )
     actions = st.columns(2)
     actions[0].download_button(
@@ -3230,14 +3471,14 @@ def render() -> None:
         mime="text/plain; charset=utf-8",
         use_container_width=True,
         key=f"{STATE_PREFIX}_download",
-        disabled=not bool(relevant_prompt),
+        disabled=not positive_prompt_ready,
     )
     if actions[1].button(
         "送到圖片提示詞草稿繼續修改",
         type="primary",
         use_container_width=True,
         key=f"{STATE_PREFIX}_to_scratch",
-        disabled=not bool(relevant_prompt),
+        disabled=not handoff_ready,
     ):
         _handoff_to_prompt_scratch(
             mode=mode,
@@ -3251,12 +3492,15 @@ def render() -> None:
 
 __all__ = [
     "ADULT_MODE_STATE_KEY",
+    "BACKGROUND_EDITOR_STATE_KEY",
     "BACKGROUND_OUTPUT_STATE_KEY",
+    "CHARACTER_EDITOR_STATE_KEY",
     "CHARACTER_OUTPUT_STATE_KEY",
     "COMBINED_OUTPUT_STATE_KEY",
     "GENDER_STATE_KEY",
     "IDENTITY_MODE_STATE_KEY",
     "MODE_STATE_KEY",
+    "NEGATIVE_EDITOR_STATE_KEY",
     "NEGATIVE_OUTPUT_STATE_KEY",
     "PAGE_KEY",
     "PAGE_LABEL",
