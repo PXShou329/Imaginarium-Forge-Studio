@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "imaginarium-forge"
-version = "0.4.0.dev15"
+version = "0.4.0.dev16"
 description = "Local-first story, character, worldbuilding and media-prompt studio"
 readme = "README.md"
 requires-python = ">=3.12"

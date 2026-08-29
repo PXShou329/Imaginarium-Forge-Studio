@@ -32,6 +32,7 @@ TOPBAR_SEARCH_POPOVER_STATE_KEY = "shell_search_popover"
 TOPBAR_CREATE_POPOVER_STATE_KEY = "shell_create_popover"
 TOPBAR_STATUS_POPOVER_STATE_KEY = "shell_status_popover"
 MOBILE_MORE_POPOVER_STATE_KEY = "shell_mobile_more_popover"
+SHELL_POPOVER_EPOCH_STATE_KEY = "shell_popover_epoch"
 
 
 def _route_button_label(route: str) -> str:
@@ -42,14 +43,23 @@ def _route_key(prefix: str, route: str) -> str:
     return f"{prefix}_{_ROUTE_KEYS[route]}"
 
 
+def _popover_key(base_key: str, current_route: str) -> str:
+    """Remount browser-owned popovers after navigation, including same-page links."""
+
+    raw_epoch = st.session_state.get(SHELL_POPOVER_EPOCH_STATE_KEY, 0)
+    epoch = raw_epoch if isinstance(raw_epoch, int) else 0
+    return f"{base_key}_{_ROUTE_KEYS[current_route]}_{epoch}"
+
+
 def _queue_popover_navigation(
     queue_navigation: NavigationCallback,
-    popover_state_key: str,
     route: str,
 ) -> None:
-    """Close one navigation popover before using the guarded route callback."""
+    """Close browser-owned navigation popovers before queuing a route."""
 
-    st.session_state[popover_state_key] = False
+    raw_epoch = st.session_state.get(SHELL_POPOVER_EPOCH_STATE_KEY, 0)
+    epoch = raw_epoch if isinstance(raw_epoch, int) else 0
+    st.session_state[SHELL_POPOVER_EPOCH_STATE_KEY] = epoch + 1
     queue_navigation(route)
 
 
@@ -182,8 +192,8 @@ def render_topbar(
         with controls[5].popover(
             "⌕ 搜尋",
             use_container_width=True,
-            key=TOPBAR_SEARCH_POPOVER_STATE_KEY,
-            on_change="rerun",
+            key=_popover_key(TOPBAR_SEARCH_POPOVER_STATE_KEY, current_route),
+            on_change="ignore",
         ):
             st.markdown("**前往功能**")
             st.caption("搜尋範圍是本機應用程式內的工作頁，不會送出任何內容。")
@@ -200,14 +210,14 @@ def render_topbar(
                 key="shell_route_search_go",
                 type="primary",
                 on_click=_queue_popover_navigation,
-                args=(queue_navigation, TOPBAR_SEARCH_POPOVER_STATE_KEY, target),
+                args=(queue_navigation, target),
                 use_container_width=True,
             )
         with controls[6].popover(
             "＋ 建立",
             use_container_width=True,
-            key=TOPBAR_CREATE_POPOVER_STATE_KEY,
-            on_change="rerun",
+            key=_popover_key(TOPBAR_CREATE_POPOVER_STATE_KEY, current_route),
+            on_change="ignore",
         ):
             st.markdown("**直接開始**")
             quick_routes = (
@@ -222,14 +232,14 @@ def render_topbar(
                     label,
                     key=_route_key("shell_quick", route),
                     on_click=_queue_popover_navigation,
-                    args=(queue_navigation, TOPBAR_CREATE_POPOVER_STATE_KEY, route),
+                    args=(queue_navigation, route),
                     use_container_width=True,
                 )
         with controls[7].popover(
             "● 狀態",
             use_container_width=True,
-            key=TOPBAR_STATUS_POPOVER_STATE_KEY,
-            on_change="rerun",
+            key=_popover_key(TOPBAR_STATUS_POPOVER_STATE_KEY, current_route),
+            on_change="ignore",
         ):
             openai = read_openai_session_settings(st.session_state)
             st.markdown("**創作環境**")
@@ -242,7 +252,6 @@ def render_topbar(
                 on_click=_queue_popover_navigation,
                 args=(
                     queue_navigation,
-                    TOPBAR_STATUS_POPOVER_STATE_KEY,
                     ai_settings.PAGE_KEY,
                 ),
                 use_container_width=True,
@@ -253,7 +262,6 @@ def render_topbar(
                 on_click=_queue_popover_navigation,
                 args=(
                     queue_navigation,
-                    TOPBAR_STATUS_POPOVER_STATE_KEY,
                     "System Health",
                 ),
                 use_container_width=True,
@@ -288,8 +296,8 @@ def render_mobile_navigation(
         with columns[4].popover(
             "⋯ 更多",
             use_container_width=True,
-            key=MOBILE_MORE_POPOVER_STATE_KEY,
-            on_change="rerun",
+            key=_popover_key(MOBILE_MORE_POPOVER_STATE_KEY, current_route),
+            on_change="ignore",
         ):
             st.markdown("**更多工作頁**")
             for route in (
@@ -305,13 +313,14 @@ def render_mobile_navigation(
                     key=_route_key("mobile_more", route),
                     type="primary" if route == current_route else "secondary",
                     on_click=_queue_popover_navigation,
-                    args=(queue_navigation, MOBILE_MORE_POPOVER_STATE_KEY, route),
+                    args=(queue_navigation, route),
                     use_container_width=True,
                 )
 
 
 __all__ = [
     "MOBILE_MORE_POPOVER_STATE_KEY",
+    "SHELL_POPOVER_EPOCH_STATE_KEY",
     "TOPBAR_CREATE_POPOVER_STATE_KEY",
     "TOPBAR_SEARCH_POPOVER_STATE_KEY",
     "TOPBAR_STATUS_POPOVER_STATE_KEY",

@@ -59,6 +59,7 @@ _NAV_HISTORY_STATE_KEY = "navigation_route_history"
 _NAV_HISTORY_INDEX_STATE_KEY = "navigation_route_history_index"
 _NAV_HISTORY_TARGET_STATE_KEY = "pending_navigation_history_target"
 _NAV_HISTORY_LIMIT = 50
+_ROUTE_QUERY_PARAM = "route"
 
 
 def _scroll_workspace_to_top(route_token: str) -> None:
@@ -195,6 +196,23 @@ def _navigation_target(
     return fallback if fallback in pages else None
 
 
+def _query_route(pages: Mapping[str, object]) -> str | None:
+    """Return one fail-closed route from the browser URL."""
+
+    raw = st.query_params.get(_ROUTE_QUERY_PARAM)
+    if isinstance(raw, list):
+        raw = raw[-1] if raw else None
+    return str(raw) if raw in pages else None
+
+
+def _sync_route_query(route: str) -> None:
+    raw = st.query_params.get(_ROUTE_QUERY_PARAM)
+    if isinstance(raw, list):
+        raw = raw[-1] if raw else None
+    if raw != route:
+        st.query_params[_ROUTE_QUERY_PARAM] = route
+
+
 def _activate_navigation(route: str) -> bool:
     group = group_for_route(route)
     if group is None:
@@ -203,6 +221,7 @@ def _activate_navigation(route: str) -> bool:
     st.session_state[_ACTIVE_NAV_STATE_KEY] = route
     st.session_state[_NAV_GROUP_STATE_KEY] = group
     _record_navigation_visit(route)
+    _sync_route_query(route)
     return True
 
 
@@ -263,7 +282,7 @@ def _apply_pending_navigation(pages: Mapping[str, object]) -> None:
     current = st.session_state.get(_ACTIVE_NAV_STATE_KEY)
     if current not in pages:
         candidate = st.session_state.get("nav_choice")
-        current = candidate if candidate in pages else "首頁"
+        current = candidate if candidate in pages else (_query_route(pages) or "首頁")
     if not _activate_navigation(str(current)):
         current = "首頁"
         _activate_navigation(current)

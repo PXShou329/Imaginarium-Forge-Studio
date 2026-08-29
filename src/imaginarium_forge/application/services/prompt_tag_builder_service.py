@@ -13217,16 +13217,22 @@ def _randomize_attempt(
     *,
     fill_blanks_only: bool,
     required_groups: Sequence[str],
+    explicit_required_category_keys: frozenset[str],
     picker: random.Random,
 ) -> tuple[SelectionResult, bool]:
     selection_state = {key: tuple(value) for key, value in locked.items()}
     result: SelectionResult = {}
     category_by_key = {category.key: category for category in categories}
-    required_category_keys = _required_random_category_keys(
-        categories,
-        locked,
-        required_groups,
-        picker=picker,
+    required_category_keys = frozenset(
+        {
+            *_required_random_category_keys(
+                categories,
+                locked,
+                required_groups,
+                picker=picker,
+            ),
+            *explicit_required_category_keys,
+        }
     )
     expression_slots = tuple(
         key
@@ -13425,6 +13431,9 @@ def randomize_selections(
     fill_blanks_only: bool = True,
     seed: int | str | bytes | bytearray | None = None,
     required_groups: Sequence[str] = (),
+    *,
+    locked_selections: Mapping[str, SelectionValue] | None = None,
+    required_category_keys: Sequence[str] = (),
 ) -> SelectionResult:
     """Return coherent random keys while preserving deliberate manual choices.
 
@@ -13434,14 +13443,28 @@ def randomize_selections(
     fit those anchors.  A full reroll applies coherence rules to every value.
     ``required_groups`` opts selected callers into at least one non-empty
     randomizable category per named group whenever the locked anchors permit it.
+    ``locked_selections`` is an explicit coherence anchor for a full reroll.  It
+    is intentionally separate from ``fill_blanks_only`` so callers can keep one
+    taxonomy choice (for example an animal species) without forcing every
+    optional multi-select category to become non-empty.
+    ``required_category_keys`` is the corresponding narrow completeness rule:
+    only those named categories are forced to receive a value.
     """
 
     current = current or {}
     if isinstance(required_groups, (str, bytes, bytearray)):
         raise ValueError("必要隨機群組必須使用群組名稱序列")
     required_groups = tuple(dict.fromkeys(required_groups))
-    known_categories = {category.key for category in categories}
-    unknown_categories = sorted(set(current) - known_categories)
+    locked_selections = locked_selections or {}
+    if isinstance(required_category_keys, (str, bytes, bytearray)):
+        raise ValueError("必要隨機分類必須使用分類鍵序列")
+    required_category_keys = tuple(dict.fromkeys(required_category_keys))
+    category_by_key = {category.key: category for category in categories}
+    known_categories = set(category_by_key)
+    unknown_categories = sorted(
+        (set(current) | set(locked_selections) | set(required_category_keys))
+        - known_categories
+    )
     if unknown_categories:
         raise ValueError(f"含未知標籤分類：{', '.join(unknown_categories)}")
 
@@ -13450,6 +13473,22 @@ def randomize_selections(
         current,
         fill_blanks_only=fill_blanks_only,
     )
+    explicit_locked = _locked_random_selections(
+        categories,
+        locked_selections,
+        fill_blanks_only=True,
+    )
+    locked.update(explicit_locked)
+    unavailable_required_categories = sorted(
+        key
+        for key in required_category_keys
+        if category_by_key[key].random_max == 0 and not locked.get(key)
+    )
+    if unavailable_required_categories:
+        raise ValueError(
+            "必要隨機分類沒有可用選項："
+            + ", ".join(unavailable_required_categories)
+        )
     known_groups = {category.group for category in categories}
     unknown_groups = sorted(set(required_groups) - known_groups)
     if unknown_groups:
@@ -13474,6 +13513,7 @@ def randomize_selections(
             locked,
             fill_blanks_only=fill_blanks_only,
             required_groups=required_groups,
+            explicit_required_category_keys=frozenset(required_category_keys),
             picker=picker,
         )
         covered_groups = _covered_random_groups(categories, result, required_groups)

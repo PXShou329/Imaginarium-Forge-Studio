@@ -31,6 +31,7 @@ from imaginarium_forge.application.services.prompt_tag_builder_service import (
     INCAPACITATED_CONFLICT_OPTION_KEYS_BY_CATEGORY,
     NEGATIVE_CATEGORIES,
     CharacterIdentityMode,
+    SelectionResult,
     TagCategory,
     TagOption,
     build_background_prompt,
@@ -59,6 +60,7 @@ CHARACTER_GROUP_STATE_KEY = f"{STATE_PREFIX}_character_active_group"
 BACKGROUND_GROUP_STATE_KEY = f"{STATE_PREFIX}_background_active_group"
 GENDER_STATE_KEY = f"{STATE_PREFIX}_gender"
 _GENDER_SELECTION_STATE_KEY = f"{STATE_PREFIX}_gender_selection"
+_GENDER_RESET_APPLIED_STATE_KEY = f"{STATE_PREFIX}_gender_reset_applied"
 IDENTITY_MODE_STATE_KEY = f"{STATE_PREFIX}_identity_mode"
 _DURABLE_IDENTITY_MODE_STATE_KEY = f"{STATE_PREFIX}_identity_mode_saved"
 ADULT_MODE_STATE_KEY = f"{STATE_PREFIX}_adult_mode"
@@ -223,12 +225,12 @@ _GROUP_HINTS: Final[dict[str, str]] = {
     "臉部與眼睛": "從膚色、臉型到眼型與眼色，逐層補足可辨識特徵。",
     "髮型與髮色": "髮長、髮型、瀏海、顏色與質感各自調整。",
     "個性與奇幻特徵": "表情、耳朵、角、翅膀與魔法痕跡可以自由混搭。",
-    "獸人／半獸人": "先選一個物種；確認物種後才會展開半獸人細節。",
+    "獸人／半獸人": "先選一個物種；確認物種後，同一區會展開半獸人細節。",
     "獸人／半獸人細節": (
         "先選半獸人物種，再分開調整融合比例、鼻口、體表、花紋與覆蓋位置、獸耳、尾巴及手腳；"
         "人型手腳永遠可選，獸耳會取代人耳，不會生成兩套耳朵。"
     ),
-    "福瑞": "先選一個完整擬人物種；確認物種後才會展開福瑞細節。",
+    "福瑞": "先選一個完整擬人物種；確認物種後，同一區會展開福瑞細節。",
     "福瑞細節": "依物種調整完整擬人角色的體表、花紋、口鼻、腿腳、肢端與尾部。",
     "服裝與配件": (
         "先從上身、下身、連身服裝、內著、泳裝、襪類與配件部位逐項搭配；"
@@ -257,6 +259,10 @@ _CHARACTER_TRAILING_GROUP_ORDER: Final[tuple[str, ...]] = (
     "成人身體細節（18+）",
     "成人動作與表情（18+）",
 )
+_IDENTITY_DETAIL_GROUP_PARENTS: Final[dict[str, str]] = {
+    "獸人／半獸人細節": "獸人／半獸人",
+    "福瑞細節": "福瑞",
+}
 _STANDARD_ADULT_GROUP_ORDER: Final[tuple[str, ...]] = (
     "身分與輪廓",
     "身材細節",
@@ -413,6 +419,10 @@ _NUDITY_DEPENDENT_OPTION_KEYS: Final[dict[str, frozenset[str]]] = {
 }
 _TOPLESS_DEPENDENT_POSE_KEYS: Final[frozenset[str]] = frozenset({"topless_pose"})
 _ADULT_RANDOM_NOTICE_STATE_KEY: Final = f"{STATE_PREFIX}_adult_random_notice"
+_CHARACTER_REROLL_HISTORY_STATE_KEY: Final = (
+    f"{STATE_PREFIX}_character_reroll_history"
+)
+_CHARACTER_REROLL_HISTORY_LIMIT: Final = 4
 _TAG_BUTTONS_PER_HALF_ROW: Final = 4
 _TAG_BUTTONS_PER_WIDE_ROW: Final = 8
 _CENTERED_WIDE_HALF_ROW_CATEGORY_KEYS: Final[frozenset[str]] = frozenset(
@@ -437,6 +447,23 @@ def _remember_gender_selection() -> None:
     else:
         st.session_state.pop(_GENDER_SELECTION_STATE_KEY, None)
         return
+    reset_applied = st.session_state.get(_GENDER_RESET_APPLIED_STATE_KEY)
+    if reset_applied != selected:
+        # A gender choice unlocks the editor; it must not silently look like a
+        # first random roll.  Store explicit empty values so catalog defaults do
+        # not populate appearance, clothing, accessories, or actions on mount.
+        # This marker is intentionally separate from the durable gender mirror:
+        # the real browser can update that mirror before the next script body,
+        # while the tag reset still needs to run exactly once per gender change.
+        _clear_selections(
+            "character",
+            _randomizable_character_categories(CHARACTER_CATEGORIES),
+        )
+        _clear_all_custom_species_state()
+        st.session_state.pop(_ADULT_RANDOM_NOTICE_STATE_KEY, None)
+        st.session_state.pop(_CHARACTER_REROLL_HISTORY_STATE_KEY, None)
+        st.session_state.pop(_CHARACTER_SANITIZE_CONTEXT_STATE_KEY, None)
+        st.session_state[_GENDER_RESET_APPLIED_STATE_KEY] = selected
     _write_session_value_if_changed(_GENDER_SELECTION_STATE_KEY, selected)
 
 
@@ -726,12 +753,15 @@ def _sanitize_visible_category_state(
         raw = st.session_state.get(key) if widget_exists else sanitized_store.get(source.key)
         visible = visible_by_key.get(source.key)
         if visible is None:
-            # Remove the key entirely so a category that becomes applicable
-            # again can receive its catalog default on the next rerun.
+            # Hidden branches must be cleared, but the explicit empty value is
+            # retained.  Otherwise returning to that branch re-applies catalog
+            # defaults and looks like an unsolicited random roll.
             st.session_state.pop(key, None)
             st.session_state.pop(_selection_tracker_key(kind, source), None)
             st.session_state.pop(_selection_notice_key(kind, source), None)
-            sanitized_store.pop(source.key, None)
+            sanitized_store[source.key] = (
+                () if source.selection_mode == "multi" else None
+            )
             continue
 
         allowed = _category_option_keys(visible)
@@ -1004,11 +1034,6 @@ def _render_local_styles() -> None:
         [data-testid="stButtonGroup"] > [role="radiogroup"] {{
             grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
         }}
-        .st-key-{STATE_PREFIX}_character_group_nav_adult
-        [data-testid="stButtonGroup"] > [role="radiogroup"]
-        > button:nth-last-child(4) {{
-            grid-column: 1 !important;
-        }}
         @container (max-width: 42rem) {{
             .st-key-{STATE_PREFIX}_character_group_nav
             [data-testid="stButtonGroup"] > [role="radiogroup"],
@@ -1028,11 +1053,6 @@ def _render_local_styles() -> None:
             [data-testid="stButtonGroup"] > [role="radiogroup"] {{
                 grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
             }}
-            .st-key-{STATE_PREFIX}_character_group_nav_adult
-            [data-testid="stButtonGroup"] > [role="radiogroup"]
-            > button:nth-last-child(4) {{
-                grid-column: 1 !important;
-            }}
         }}
         @container (max-width: 24rem) {{
             .st-key-{STATE_PREFIX}_character_group_nav
@@ -1050,11 +1070,6 @@ def _render_local_styles() -> None:
             .st-key-{STATE_PREFIX}_character_group_nav_standard_adult
             [data-testid="stButtonGroup"] > [role="radiogroup"] {{
                 grid-template-columns: minmax(0, 1fr) !important;
-            }}
-            .st-key-{STATE_PREFIX}_character_group_nav_adult
-            [data-testid="stButtonGroup"] > [role="radiogroup"]
-            > button:nth-last-child(4) {{
-                grid-column: 1 !important;
             }}
         }}
         [class*="st-key-{STATE_PREFIX}_tag_category_"] {{
@@ -2021,7 +2036,14 @@ def _grouped_category_rows(
 ) -> tuple[tuple[str, tuple[TagCategory, ...]], ...]:
     grouped: dict[str, list[TagCategory]] = {}
     for category in categories:
-        grouped.setdefault(category.group, []).append(category)
+        # Species and its branch details are one editing chapter.  Keeping a
+        # separate detail chapter made the navigator gain a button immediately
+        # after a species was selected, which reflowed every following row.
+        navigation_group = _IDENTITY_DETAIL_GROUP_PARENTS.get(
+            category.group,
+            category.group,
+        )
+        grouped.setdefault(navigation_group, []).append(category)
     rows = tuple(
         (
             group,
@@ -2239,9 +2261,14 @@ def _visible_group_rows(
         st.session_state[active_key] = _GROUP_OVERVIEW_KEY
     elif st.session_state.get(active_key) not in navigation_options:
         durable_active_key = _DURABLE_GROUP_NAVIGATION_STATE_KEYS[kind]
+        current_group = st.session_state.get(active_key)
         durable_group = st.session_state.get(durable_active_key)
+        migrated_group = _IDENTITY_DETAIL_GROUP_PARENTS.get(
+            str(current_group),
+            _IDENTITY_DETAIL_GROUP_PARENTS.get(str(durable_group), durable_group),
+        )
         st.session_state[active_key] = (
-            durable_group if durable_group in navigation_options else groups[0]
+            migrated_group if migrated_group in navigation_options else groups[0]
         )
 
     navigation_container_key = _group_navigation_container_key(kind, groups)
@@ -2445,7 +2472,12 @@ def _identity_filtered_character_categories(
     if species_key is None:
         return complete_categories, complete_categories
 
-    selected_species = _selected_category_values("character", species_key)
+    stored_species = _selection_store("character").get(species_key)
+    selected_species = (
+        _selection_value_keys(stored_species)
+        if stored_species is not None
+        else _selected_category_values("character", species_key)
+    )
     _, custom_species_en = _active_custom_species_values(identity_mode)
     species_ready = bool(selected_species) and (
         "other" not in selected_species or bool(custom_species_en)
@@ -2547,6 +2579,164 @@ def _selection_value_keys(value: SelectionValue) -> tuple[str, ...]:
     return ()
 
 
+def _character_reroll_signature(
+    identity_mode: CharacterIdentityMode,
+    selections: Mapping[str, SelectionValue],
+) -> dict[str, tuple[str, ...]]:
+    """Describe the features that most strongly affect perceived reroll variety."""
+
+    def values(*category_keys: str) -> tuple[str, ...]:
+        return tuple(
+            f"{category_key}={option_key}"
+            for category_key in category_keys
+            for option_key in _selection_value_keys(selections.get(category_key))
+        )
+
+    adult_action_keys = tuple(
+        category.key
+        for category in CHARACTER_CATEGORIES
+        if category.group == "成人動作與表情（18+）"
+    )
+    adult_action = values(*adult_action_keys)
+    return {
+        "identity": (identity_mode,),
+        "species": values(
+            "fantasy_race",
+            "beast_humanoid_species",
+            "furry_species",
+        ),
+        "hair_style": values("hair_length", "hair_style", "bangs", "hair_texture"),
+        "hair_color": values("hair_color", "hair_pattern"),
+        "eyewear": values("eyewear"),
+        "outfit": values(
+            *(
+                key
+                for key in _WARDROBE_CATEGORY_ORDER
+                if key not in {"accessories", "adult_toys", "intimate_accessories"}
+            )
+        ),
+        "accessories": values(
+            "accessories",
+            "accessory_head_hair",
+            "accessory_face_neck",
+            "accessory_hand_arm",
+            "accessory_waist_body",
+            "accessory_bags",
+            "intimate_accessories",
+            "adult_toys",
+        ),
+        # Adult actions supersede a general pose in the built Prompt.  Compare
+        # the effective action rather than penalizing a hidden pose fragment.
+        "action": adult_action or values("pose"),
+        "expression": values(
+            "expression",
+            "character_state",
+            "adult_female_expression",
+            "adult_female_state",
+        ),
+    }
+
+
+def _character_reroll_history() -> tuple[dict[str, tuple[str, ...]], ...]:
+    raw = st.session_state.get(_CHARACTER_REROLL_HISTORY_STATE_KEY)
+    if not isinstance(raw, Sequence) or isinstance(raw, (str, bytes, bytearray)):
+        return ()
+    history: list[dict[str, tuple[str, ...]]] = []
+    for item in raw:
+        if not isinstance(item, Mapping):
+            continue
+        normalized: dict[str, tuple[str, ...]] = {}
+        for field, field_values in item.items():
+            if not isinstance(field, str):
+                continue
+            if isinstance(field_values, Sequence) and not isinstance(
+                field_values,
+                (str, bytes, bytearray),
+            ):
+                normalized[field] = tuple(str(value) for value in field_values)
+        if normalized:
+            history.append(normalized)
+    return tuple(history[-_CHARACTER_REROLL_HISTORY_LIMIT:])
+
+
+def _character_reroll_rank(
+    signature: Mapping[str, tuple[str, ...]],
+    history: Sequence[Mapping[str, tuple[str, ...]]],
+) -> tuple[int, int]:
+    """Prefer no immediate high-salience repeats, then broader recent novelty."""
+
+    if not history:
+        return (0, 0)
+    previous = history[-1]
+    salient_fields = ("species", "hair_style", "hair_color", "eyewear", "outfit", "action")
+    repeated = sum(
+        bool(signature.get(field)) and signature.get(field) == previous.get(field)
+        for field in salient_fields
+    )
+    weights = {
+        "identity": 2,
+        "species": 7,
+        "hair_style": 8,
+        "hair_color": 8,
+        "eyewear": 5,
+        "outfit": 8,
+        "accessories": 5,
+        "action": 8,
+        "expression": 4,
+    }
+    novelty = 0
+    for distance, prior in enumerate(reversed(history), start=1):
+        recency = max(1, _CHARACTER_REROLL_HISTORY_LIMIT + 1 - distance)
+        for field, weight in weights.items():
+            current_values = signature.get(field, ())
+            prior_values = prior.get(field, ())
+            if current_values != prior_values:
+                novelty += weight * recency
+            elif current_values:
+                novelty -= weight * recency
+    return (-repeated, novelty)
+
+
+def _remember_character_reroll_signature(
+    signature: Mapping[str, tuple[str, ...]],
+) -> None:
+    st.session_state[_CHARACTER_REROLL_HISTORY_STATE_KEY] = (
+        _updated_character_reroll_history(_character_reroll_history(), signature)
+    )
+
+
+def _updated_character_reroll_history(
+    history: Sequence[Mapping[str, tuple[str, ...]]],
+    signature: Mapping[str, tuple[str, ...]],
+) -> list[dict[str, tuple[str, ...]]]:
+    updated = [*(dict(item) for item in history), dict(signature)]
+    return updated[-_CHARACTER_REROLL_HISTORY_LIMIT:]
+
+
+def _limit_randomized_group_categories(
+    categories: Sequence[TagCategory],
+    randomized: SelectionResult,
+    limits: Mapping[str, int],
+) -> SelectionResult:
+    """Bound competing random categories while retaining at least one per group."""
+
+    limited = dict(randomized)
+    for group, maximum in limits.items():
+        selected_keys = [
+            category.key
+            for category in categories
+            if category.group == group and _selection_value_keys(limited.get(category.key))
+        ]
+        if len(selected_keys) <= maximum:
+            continue
+        retained = set(random.sample(selected_keys, k=maximum))
+        for category in categories:
+            if category.group != group or category.key in retained:
+                continue
+            limited[category.key] = () if category.selection_mode == "multi" else ""
+    return limited
+
+
 def _character_build_inputs(
     selections: Mapping[str, SelectionValue],
     identity_mode: CharacterIdentityMode,
@@ -2577,6 +2767,9 @@ def _validated_random_character_selections(
     fill_blanks_only: bool,
     required_groups: Sequence[str],
     preserved_selections: Mapping[str, SelectionValue] | None = None,
+    locked_selections: Mapping[str, SelectionValue] | None = None,
+    required_category_keys: Sequence[str] = (),
+    group_category_limits: Mapping[str, int] | None = None,
     attempts: int = 8,
 ) -> dict[str, SelectionValue] | None:
     """Return a buildable random candidate so pills and Prompt update atomically."""
@@ -2587,7 +2780,15 @@ def _validated_random_character_selections(
             current,
             fill_blanks_only=fill_blanks_only,
             required_groups=required_groups,
+            locked_selections=locked_selections,
+            required_category_keys=required_category_keys,
         )
+        if group_category_limits:
+            randomized = _limit_randomized_group_categories(
+                categories,
+                randomized,
+                group_category_limits,
+            )
         build_selections = dict(preserved_selections or {})
         build_selections.update(randomized)
         active_selections, custom_species_en = _character_build_inputs(
@@ -2678,13 +2879,31 @@ def _reroll_character(
 ) -> None:
     """Reroll identity first, then generate a coherent branch-specific character."""
 
-    candidate: tuple[
-        CharacterIdentityMode,
-        tuple[TagCategory, ...],
-        dict[str, SelectionValue],
-        tuple[str, ...],
-    ] | None = None
-    for _attempt in range(8):
+    history = _character_reroll_history()
+    preserved_selections = _read_selections(
+        "character",
+        tuple(
+            category
+            for category in CHARACTER_CATEGORIES
+            if category.key == _CHARACTER_OUTPUT_PURPOSE_CATEGORY_KEY
+        ),
+    )
+    candidates: list[
+        tuple[
+            tuple[int, int],
+            CharacterIdentityMode,
+            tuple[TagCategory, ...],
+            dict[str, SelectionValue],
+            tuple[str, ...],
+            dict[str, tuple[str, ...]],
+        ]
+    ] = []
+    # The first roll needs only one valid candidate, but still gets retries if
+    # a sampled combination cannot be built.  Later rolls compare up to eight
+    # valid candidates and select the one least like recent visible results.
+    candidate_target = 1 if not history else 8
+    attempt_budget = 8 if candidate_target == 1 else 16
+    for _attempt in range(attempt_budget):
         identity_mode = _choose_random_identity_mode()
         complete_categories, _visible_categories = _identity_filtered_character_categories(
             gender,
@@ -2692,7 +2911,25 @@ def _reroll_character(
             identity_mode=identity_mode,
         )
         random_categories = _randomizable_character_categories(complete_categories)
-        current = _with_random_species_anchor(identity_mode, random_categories, {})
+        species_anchor = _with_random_species_anchor(
+            identity_mode,
+            random_categories,
+            {},
+        )
+        species_key = _identity_species_key(identity_mode)
+        locked_selections: Mapping[str, SelectionValue] | None = (
+            species_anchor if species_key is not None else None
+        )
+        required_category_keys = (
+            tuple(
+                category.key
+                for category in random_categories
+                if category.key
+                in (CHARACTER_IDENTITY_CATEGORY_KEYS[identity_mode] - {species_key})
+            )
+            if species_key is not None
+            else ()
+        )
         required_groups = (
             _required_adult_random_groups(random_categories) if include_adult else ()
         )
@@ -2700,32 +2937,44 @@ def _reroll_character(
             gender,
             identity_mode,
             random_categories,
-            current,
+            {},
             include_adult=include_adult,
-            # A locked animal species makes every compatible branch detail receive
-            # a value. Standard identity has no such anchor and gets a clean reroll.
-            fill_blanks_only=_identity_species_key(identity_mode) is not None,
+            fill_blanks_only=False,
             required_groups=required_groups,
-            preserved_selections=_read_selections(
-                "character",
-                tuple(
-                    category
-                    for category in CHARACTER_CATEGORIES
-                    if category.key == _CHARACTER_OUTPUT_PURPOSE_CATEGORY_KEY
-                ),
-            ),
+            preserved_selections=preserved_selections,
+            locked_selections=locked_selections,
+            required_category_keys=required_category_keys,
+            group_category_limits={group: 2 for group in required_groups},
             attempts=1,
         )
         if randomized is not None:
-            candidate = (identity_mode, random_categories, randomized, required_groups)
-            break
-    if candidate is None:
+            signature = _character_reroll_signature(identity_mode, randomized)
+            candidates.append(
+                (
+                    _character_reroll_rank(signature, history),
+                    identity_mode,
+                    random_categories,
+                    randomized,
+                    required_groups,
+                    signature,
+                )
+            )
+            if len(candidates) >= candidate_target:
+                break
+    if not candidates:
         st.session_state[_ADULT_RANDOM_NOTICE_STATE_KEY] = (
             "這次沒有找到可安全組合的標籤；目前內容已完整保留，請再試一次。"
         )
         return
 
-    identity_mode, random_categories, randomized, required_groups = candidate
+    (
+        _rank,
+        identity_mode,
+        random_categories,
+        randomized,
+        required_groups,
+        signature,
+    ) = max(candidates, key=lambda item: item[0])
     _queue_character_editor_manual_for_reroll()
     st.session_state[IDENTITY_MODE_STATE_KEY] = identity_mode
     _remember_page_widget_value(IDENTITY_MODE_STATE_KEY)
@@ -2741,6 +2990,7 @@ def _reroll_character(
         required_groups,
         fill_blanks_only=False,
     )
+    _remember_character_reroll_signature(signature)
 
 
 def _render_custom_species_fields(identity_mode: CharacterIdentityMode) -> None:
