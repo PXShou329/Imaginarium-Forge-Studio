@@ -384,7 +384,7 @@ ACCESSORIES_ADULT: Final[tuple[ClothingTagDefinition, ...]] = (
     (
         "adult_accessory_navel_chain",
         "珠寶肚臍穿孔鍊（18+）",
-        "jeweled navel-piercing chain",
+        "jeweled belly chain attached to a navel piercing",
     ),
     (
         "adult_accessory_sheer_elbow_gloves",
@@ -454,3 +454,635 @@ OUTFIT_PALETTE_SAFE: Final[tuple[ClothingTagDefinition, ...]] = (
 
 
 OUTFIT_PALETTE_ADULT: Final[tuple[ClothingTagDefinition, ...]] = ()
+
+
+# V12 semantic partitions keep the V11 source tuples intact while exposing
+# author-facing wardrobe slots that can be rendered and randomized separately.
+_OUTFIT_UPPER_SAFE_SOURCE: Final[tuple[ClothingTagDefinition, ...]] = (
+    OUTFIT_ARCHETYPE_SAFE[0:16]
+)
+_OUTFIT_LOWER_SAFE_SOURCE: Final[tuple[ClothingTagDefinition, ...]] = (
+    OUTFIT_ARCHETYPE_SAFE[16:35]
+)
+_OUTFIT_ONE_PIECE_SAFE_SOURCE: Final[tuple[ClothingTagDefinition, ...]] = (
+    *OUTFIT_ARCHETYPE_SAFE[35:46],
+    OUTFIT_ARCHETYPE_SAFE[133],
+    OUTFIT_ARCHETYPE_SAFE[135],
+)
+_OUTFIT_OUTERWEAR_SAFE_SOURCE: Final[tuple[ClothingTagDefinition, ...]] = (
+    *OUTFIT_ARCHETYPE_SAFE[46:57],
+    OUTFIT_ARCHETYPE_SAFE[134],
+)
+_OUTFIT_BRA_SAFE_SOURCE: Final[tuple[ClothingTagDefinition, ...]] = (
+    OUTFIT_ARCHETYPE_SAFE[57:65]
+)
+_OUTFIT_UNDERWEAR_SAFE_SOURCE: Final[tuple[ClothingTagDefinition, ...]] = (
+    *OUTFIT_ARCHETYPE_SAFE[65:79],
+    *OUTFIT_ARCHETYPE_SAFE[94:98],
+)
+_OUTFIT_SLEEPWEAR_SAFE_SOURCE: Final[tuple[ClothingTagDefinition, ...]] = (
+    OUTFIT_ARCHETYPE_SAFE[79:89]
+)
+_OUTFIT_UNIFORM_SPORT_SAFE_SOURCE: Final[tuple[ClothingTagDefinition, ...]] = (
+    *OUTFIT_ARCHETYPE_SAFE[89:94],
+    *OUTFIT_ARCHETYPE_SAFE[98:104],
+)
+_OUTFIT_SWIMWEAR_SAFE_SOURCE: Final[tuple[ClothingTagDefinition, ...]] = (
+    OUTFIT_ARCHETYPE_SAFE[104:133]
+)
+
+
+OUTFIT_UPPER_SAFE: Final[tuple[ClothingTagDefinition, ...]] = _OUTFIT_UPPER_SAFE_SOURCE
+
+
+OUTFIT_LOWER_SAFE: Final[tuple[ClothingTagDefinition, ...]] = (
+    *_OUTFIT_LOWER_SAFE_SOURCE,
+    ("capri_pants", "七分褲", "capri pants"),
+    ("palazzo_pants", "寬管褲", "palazzo pants"),
+    ("mini_skirt", "迷你裙", "miniskirt"),
+    ("maxi_skirt", "及踝長裙", "maxi skirt"),
+    ("layered_skirt", "層疊裙", "layered skirt"),
+)
+
+
+OUTFIT_ONE_PIECE_SAFE: Final[tuple[ClothingTagDefinition, ...]] = (
+    *_OUTFIT_ONE_PIECE_SAFE_SOURCE,
+    ("qipao_dress", "旗袍洋裝", "qipao dress"),
+    ("pinafore_dress", "吊帶裙", "pinafore dress"),
+    ("asymmetrical_dress", "不對稱洋裝", "asymmetrical dress"),
+)
+
+
+OUTFIT_OUTERWEAR_SAFE: Final[tuple[ClothingTagDefinition, ...]] = (
+    *_OUTFIT_OUTERWEAR_SAFE_SOURCE,
+    ("pea_coat", "雙排扣短大衣", "pea coat"),
+    ("capelet", "小披肩", "capelet"),
+    ("duster_coat", "長版防塵外套", "duster coat"),
+    ("bolero_jacket", "短版小外套", "bolero jacket"),
+)
+
+
+OUTFIT_BRA_SAFE: Final[tuple[ClothingTagDefinition, ...]] = _OUTFIT_BRA_SAFE_SOURCE
+
+
+OUTFIT_UNDERWEAR_SAFE: Final[tuple[ClothingTagDefinition, ...]] = (
+    *_OUTFIT_UNDERWEAR_SAFE_SOURCE,
+    ("brazilian_briefs", "巴西式內褲", "Brazilian briefs"),
+    ("seamless_boxer_briefs", "無痕貼身四角褲", "seamless boxer briefs"),
+    ("woven_boxers", "梭織四角褲", "woven boxer shorts"),
+    ("long_leg_boxer_briefs", "長版貼身四角褲", "long-leg boxer briefs"),
+    ("performance_briefs", "運動快乾三角內褲", "moisture-wicking athletic briefs"),
+    ("contour_pouch_trunks", "囊袋型短版四角褲", "contour-pouch trunks"),
+)
+
+
+OUTFIT_SLEEPWEAR_SAFE: Final[tuple[ClothingTagDefinition, ...]] = (
+    *_OUTFIT_SLEEPWEAR_SAFE_SOURCE,
+    ("matching_pajama_set", "成套睡衣", "matching pajama set"),
+    ("sleep_romper", "連身短睡衣", "sleep romper"),
+    ("sleep_robe_set", "睡袍套裝", "sleep robe set"),
+    ("thermal_sleepwear", "保暖睡衣", "thermal sleepwear"),
+    ("silk_pajama_set", "絲質成套睡衣", "silk pajama set"),
+    ("sleep_tunic", "長版睡衣上衣", "sleep tunic"),
+)
+
+
+OUTFIT_UNIFORM_SPORT_SAFE: Final[tuple[ClothingTagDefinition, ...]] = (
+    *_OUTFIT_UNIFORM_SPORT_SAFE_SOURCE,
+    ("martial_arts_uniform", "武術訓練服", "martial arts training uniform"),
+    ("school_uniform", "學院制服", "academy uniform"),
+    ("military_uniform", "軍裝制服", "military dress uniform"),
+    ("medical_scrubs", "醫療刷手服", "medical scrubs"),
+    ("flight_suit", "飛行服", "flight suit"),
+)
+
+
+OUTFIT_SWIMWEAR_SAFE: Final[tuple[ClothingTagDefinition, ...]] = (
+    *_OUTFIT_SWIMWEAR_SAFE_SOURCE,
+    ("long_sleeve_swimsuit", "長袖連身泳裝", "long-sleeve one-piece swimsuit"),
+    ("full_body_surf_suit", "連身衝浪防寒衣", "full-body surf suit"),
+    ("crossback_swimsuit", "交叉背帶泳裝", "crossback swimsuit"),
+)
+
+
+_OUTFIT_BRA_ADULT_SOURCE: Final[tuple[ClothingTagDefinition, ...]] = (
+    OUTFIT_ARCHETYPE_ADULT[6],
+    OUTFIT_ARCHETYPE_ADULT[7],
+    OUTFIT_ARCHETYPE_ADULT[14],
+    OUTFIT_ARCHETYPE_ADULT[15],
+)
+OUTFIT_BRA_ADULT: Final[tuple[ClothingTagDefinition, ...]] = (
+    *_OUTFIT_BRA_ADULT_SOURCE,
+    ("adult_shelf_bra", "下托式開胸內衣（18+）", "shelf bra"),
+    ("adult_quarter_cup_bra", "四分之一罩杯內衣（18+）", "quarter-cup bra"),
+    ("adult_strappy_open_cup_bra", "綁帶開杯內衣（18+）", "strappy open-cup bra"),
+    ("adult_sheer_bra", "透膚內衣（18+）", "sheer bra"),
+)
+OUTFIT_UNDERWEAR_ADULT: Final[tuple[ClothingTagDefinition, ...]] = (
+    OUTFIT_ARCHETYPE_ADULT[17:25]
+)
+OUTFIT_SLEEPWEAR_ADULT: Final[tuple[ClothingTagDefinition, ...]] = (
+    OUTFIT_ARCHETYPE_ADULT[3],
+    *OUTFIT_ARCHETYPE_ADULT[25:32],
+)
+_OUTFIT_SWIMWEAR_ADULT_SOURCE: Final[tuple[ClothingTagDefinition, ...]] = (
+    *OUTFIT_ARCHETYPE_ADULT[0:2],
+    *OUTFIT_ARCHETYPE_ADULT[32:34],
+    OUTFIT_ARCHETYPE_ADULT[45],
+)
+_SWIMWEAR_COVERUP_ADULT_SOURCE: Final[tuple[ClothingTagDefinition, ...]] = (
+    ACCESSORIES_ADULT[1:3]
+)
+OUTFIT_SWIMWEAR_ADULT: Final[tuple[ClothingTagDefinition, ...]] = (
+    *_OUTFIT_SWIMWEAR_ADULT_SOURCE,
+    ("adult_mesh_bikini", "網紗比基尼（18+）", "mesh bikini"),
+    ("adult_sheer_bikini", "透膚比基尼（18+）", "sheer bikini"),
+    ("adult_pearl_string_bikini", "珍珠細帶比基尼（18+）", "pearl-string bikini"),
+    ("adult_open_cup_swimsuit", "開杯泳裝（18+）", "open-cup swimsuit"),
+    *_SWIMWEAR_COVERUP_ADULT_SOURCE,
+    (
+        "adult_strappy_plunge_swimsuit",
+        "深V綁帶連身泳裝（18+）",
+        "strappy plunge one-piece swimsuit",
+    ),
+    (
+        "adult_mesh_wrap_swimsuit",
+        "網紗纏繞連身泳裝（18+）",
+        "mesh wrap one-piece swimsuit",
+    ),
+    (
+        "adult_cutout_halter_swimsuit",
+        "挖空掛脖連身泳裝（18+）",
+        "cutout halter one-piece swimsuit",
+    ),
+    (
+        "adult_strappy_high_leg_bikini",
+        "綁帶高衩比基尼（18+）",
+        "strappy high-leg bikini",
+    ),
+    (
+        "adult_sheer_swim_dress",
+        "透膚泳裙（18+）",
+        "sheer swim dress",
+    ),
+)
+_OUTFIT_LINGERIE_ADULT_SOURCE: Final[tuple[ClothingTagDefinition, ...]] = (
+    OUTFIT_ARCHETYPE_ADULT[2],
+    *OUTFIT_ARCHETYPE_ADULT[4:6],
+    *OUTFIT_ARCHETYPE_ADULT[8:14],
+    OUTFIT_ARCHETYPE_ADULT[16],
+    *OUTFIT_ARCHETYPE_ADULT[34:45],
+    *OUTFIT_ARCHETYPE_ADULT[46:48],
+)
+OUTFIT_LINGERIE_ADULT: Final[tuple[ClothingTagDefinition, ...]] = (
+    *_OUTFIT_LINGERIE_ADULT_SOURCE,
+    (
+        "adult_satin_strappy_lingerie_set",
+        "緞面綁帶情趣內衣套組（18+）",
+        "satin strappy lingerie set",
+    ),
+)
+
+
+_ACCESSORIES_HEAD_HAIR_SAFE_SOURCE: Final[tuple[ClothingTagDefinition, ...]] = (
+    *ACCESSORIES_SAFE[0:11],
+    *ACCESSORIES_SAFE[34:37],
+)
+_ACCESSORIES_FACE_NECK_SAFE_SOURCE: Final[tuple[ClothingTagDefinition, ...]] = (
+    *ACCESSORIES_SAFE[11:13],
+    ACCESSORIES_SAFE[37],
+    ACCESSORIES_SAFE[39],
+)
+_ACCESSORIES_HAND_ARM_SAFE_SOURCE: Final[tuple[ClothingTagDefinition, ...]] = (
+    ACCESSORIES_SAFE[13],
+    *ACCESSORIES_SAFE[15:19],
+    ACCESSORIES_SAFE[38],
+)
+_ACCESSORIES_WAIST_BODY_SAFE_SOURCE: Final[tuple[ClothingTagDefinition, ...]] = (
+    ACCESSORIES_SAFE[14],
+    *ACCESSORIES_SAFE[19:22],
+)
+_ACCESSORIES_BAGS_SAFE_SOURCE: Final[tuple[ClothingTagDefinition, ...]] = (
+    ACCESSORIES_SAFE[22:28]
+)
+_HOSIERY_STYLE_SAFE_SOURCE: Final[tuple[ClothingTagDefinition, ...]] = (
+    ACCESSORIES_SAFE[28:34]
+)
+
+
+ACCESSORIES_HEAD_HAIR_SAFE: Final[tuple[ClothingTagDefinition, ...]] = (
+    *_ACCESSORIES_HEAD_HAIR_SAFE_SOURCE,
+    ("flower_crown", "花冠", "flower crown"),
+    ("decorative_veil", "裝飾頭紗", "decorative head veil"),
+)
+ACCESSORIES_FACE_NECK_SAFE: Final[tuple[ClothingTagDefinition, ...]] = (
+    *_ACCESSORIES_FACE_NECK_SAFE_SOURCE,
+    ("silk_neck_scarf", "絲質頸巾", "silk neck scarf"),
+    ("cravat", "領巾", "cravat"),
+    ("face_veil", "面紗", "face veil"),
+    ("neck_torque", "金屬頸環", "rigid metal torc necklace"),
+)
+ACCESSORIES_HAND_ARM_SAFE: Final[tuple[ClothingTagDefinition, ...]] = (
+    *_ACCESSORIES_HAND_ARM_SAFE_SOURCE,
+    ("armlet", "上臂環", "decorative armlet"),
+    ("hand_chain", "手鍊戒指一體鍊", "hand-chain jewelry"),
+)
+ACCESSORIES_WAIST_BODY_SAFE: Final[tuple[ClothingTagDefinition, ...]] = (
+    *_ACCESSORIES_WAIST_BODY_SAFE_SOURCE,
+    ("obi_belt", "寬版腰封", "wide obi belt"),
+    ("utility_body_harness", "工具背帶", "utility body harness"),
+    ("decorative_body_sash", "裝飾斜掛帶", "decorative body sash"),
+    ("hip_scarf", "臀腰圍巾", "decorative hip scarf"),
+)
+ACCESSORIES_BAGS_SAFE: Final[tuple[ClothingTagDefinition, ...]] = (
+    *_ACCESSORIES_BAGS_SAFE_SOURCE,
+    ("waist_bag", "隨身腰包", "waist bag"),
+    ("tote_bag", "托特包", "tote bag"),
+)
+HOSIERY_STYLE_SAFE: Final[tuple[ClothingTagDefinition, ...]] = (
+    *_HOSIERY_STYLE_SAFE_SOURCE,
+    ("cable_knit_socks", "麻花針織襪", "cable-knit socks"),
+    ("compression_socks", "壓縮襪", "compression socks"),
+)
+_HOSIERY_STYLE_ADULT_SOURCE: Final[tuple[ClothingTagDefinition, ...]] = (
+    ACCESSORIES_ADULT[3:8]
+)
+HOSIERY_STYLE_ADULT: Final[tuple[ClothingTagDefinition, ...]] = (
+    *_HOSIERY_STYLE_ADULT_SOURCE,
+    (
+        "adult_hosiery_stay_up_stockings",
+        "自黏式大腿絲襪（18+）",
+        "stay-up thigh-high stockings",
+    ),
+    (
+        "adult_hosiery_cuban_heel_stockings",
+        "古巴跟絲襪（18+）",
+        "Cuban-heel stockings",
+    ),
+    (
+        "adult_hosiery_wet_look_tights",
+        "濕亮質感褲襪（18+）",
+        "wet-look tights",
+    ),
+)
+_ACCESSORIES_INTIMATE_ADULT_SOURCE: Final[tuple[ClothingTagDefinition, ...]] = (
+    ACCESSORIES_ADULT[0],
+    *ACCESSORIES_ADULT[8:32],
+)
+ACCESSORIES_INTIMATE_ADULT: Final[tuple[ClothingTagDefinition, ...]] = (
+    *_ACCESSORIES_INTIMATE_ADULT_SOURCE,
+    (
+        "adult_accessory_jeweled_thigh_chain",
+        "珠寶大腿鍊（18+）",
+        "jeweled thigh chain",
+    ),
+    (
+        "adult_accessory_strappy_waist_hip_harness",
+        "綁帶腰胯束帶（18+）",
+        "strappy waist-and-hip harness",
+    ),
+    (
+        "adult_accessory_ornamental_body_cage",
+        "裝飾籠狀身體束帶（18+）",
+        "ornamental body-cage harness",
+    ),
+    (
+        "adult_accessory_jeweled_waist_chain",
+        "珠寶腰鍊（18+）",
+        "jeweled waist chain",
+    ),
+    (
+        "adult_accessory_lace_body_harness",
+        "蕾絲身體束帶（18+）",
+        "lace body harness",
+    ),
+    (
+        "adult_accessory_satin_wrist_cuffs",
+        "緞面腕環（18+）",
+        "satin wrist cuffs",
+    ),
+    (
+        "adult_accessory_crystal_thigh_garter",
+        "水晶大腿環（18+）",
+        "crystal thigh garter",
+    ),
+)
+
+
+HOSIERY_LENGTH_SAFE: Final[tuple[ClothingTagDefinition, ...]] = (
+    ("hosiery_ankle_length", "踝襪長度", "ankle-length hosiery"),
+    ("hosiery_quarter_length", "短筒襪長度", "quarter-length hosiery"),
+    ("hosiery_crew_length", "中筒襪長度", "crew-length hosiery"),
+    ("hosiery_mid_calf_length", "小腿中段長度", "mid-calf hosiery"),
+    ("hosiery_knee_high_length", "及膝長度", "knee-high hosiery"),
+    ("hosiery_over_knee_length", "過膝長度", "over-the-knee hosiery"),
+    ("hosiery_thigh_high_length", "大腿高長度", "thigh-high hosiery"),
+    ("hosiery_waist_high_length", "及腰長度", "waist-high hosiery"),
+)
+
+
+FOOTWEAR_SAFE: Final[tuple[ClothingTagDefinition, ...]] = (
+    ("sneakers", "休閒運動鞋", "casual sneakers"),
+    ("running_shoes", "跑鞋", "running shoes"),
+    ("loafers", "樂福鞋", "loafers"),
+    ("oxford_shoes", "牛津鞋", "Oxford shoes"),
+    ("ballet_flats", "芭蕾平底鞋", "ballet flats"),
+    ("pumps", "包頭高跟鞋", "classic pumps"),
+    ("stiletto_heels", "細跟高跟鞋", "stiletto heels"),
+    ("block_heels", "粗跟鞋", "block heels"),
+    ("platform_shoes", "厚底鞋", "platform shoes"),
+    ("ankle_boots", "短靴", "ankle boots"),
+    ("knee_high_boots", "及膝長靴", "knee-high boots"),
+    ("thigh_high_boots", "過膝長靴", "thigh-high boots"),
+    ("combat_boots", "戰鬥靴", "combat boots"),
+    ("hiking_boots", "登山靴", "hiking boots"),
+    ("riding_boots", "馬術長靴", "riding boots"),
+    ("rain_boots", "雨靴", "rain boots"),
+    ("flat_sandals", "平底涼鞋", "flat sandals"),
+    ("strappy_sandals", "繫帶涼鞋", "strappy sandals"),
+    ("flip_flops", "夾腳拖鞋", "flip-flops"),
+    ("house_slippers", "室內拖鞋", "house slippers"),
+    ("clogs", "木底鞋", "clogs"),
+    ("mary_janes", "瑪莉珍鞋", "Mary Jane shoes"),
+    ("moccasins", "莫卡辛鞋", "moccasins"),
+    ("espadrilles", "草編底鞋", "espadrilles"),
+)
+
+
+FOOTWEAR_ADULT: Final[tuple[ClothingTagDefinition, ...]] = (
+    (
+        "adult_footwear_platform_stilettos",
+        "情趣厚底細跟鞋（18+）",
+        "fetish platform stilettos",
+    ),
+    (
+        "adult_footwear_thigh_high_stiletto_boots",
+        "情趣過膝細跟靴（18+）",
+        "thigh-high stiletto boots",
+    ),
+    (
+        "adult_footwear_lace_up_thigh_boots",
+        "情趣綁帶過膝靴（18+）",
+        "lace-up thigh-high boots",
+    ),
+    ("adult_footwear_ballet_heels", "芭蕾高跟鞋（18+）", "ballet heels"),
+    (
+        "adult_footwear_clear_platform_heels",
+        "透明厚底高跟鞋（18+）",
+        "clear platform heels",
+    ),
+    (
+        "adult_footwear_ankle_cuff_heels",
+        "腳踝環帶高跟鞋（18+）",
+        "ankle-cuff heels",
+    ),
+    (
+        "adult_footwear_chain_heel_sandals",
+        "鍊飾高跟涼鞋（18+）",
+        "chain-detailed high-heel sandals",
+    ),
+    (
+        "adult_footwear_open_toe_thigh_boots",
+        "露趾過膝長靴（18+）",
+        "open-toe thigh-high boots",
+    ),
+)
+
+
+ADULT_TOYS: Final[tuple[ClothingTagDefinition, ...]] = (
+    ("adult_toy_bullet_vibrator", "子彈型震動器（18+）", "bullet vibrator"),
+    ("adult_toy_wand_vibrator", "按摩棒型震動器（18+）", "wand vibrator"),
+    ("adult_toy_rabbit_vibrator", "兔型震動器（18+）", "rabbit vibrator"),
+    ("adult_toy_suction_stimulator", "吸吮式刺激器（18+）", "suction stimulator"),
+    ("adult_toy_wearable_vibrator", "穿戴式震動器（18+）", "wearable vibrator"),
+    ("adult_toy_silicone_dildo", "矽膠假陽具（18+）", "silicone dildo"),
+    ("adult_toy_glass_dildo", "玻璃假陽具（18+）", "glass dildo"),
+    ("adult_toy_double_ended_dildo", "雙頭假陽具（18+）", "double-ended dildo"),
+    (
+        "adult_toy_strap_on_harness",
+        "穿戴式假陽具（18+）",
+        "strap-on dildo with harness",
+    ),
+    ("adult_toy_butt_plug", "肛塞（18+）", "butt plug"),
+    ("adult_toy_jeweled_butt_plug", "珠寶肛塞（18+）", "jeweled butt plug"),
+    ("adult_toy_inflatable_butt_plug", "充氣肛塞（18+）", "inflatable butt plug"),
+    ("adult_toy_anal_beads", "肛珠（18+）", "anal beads"),
+    ("adult_toy_feather_tickler", "羽毛搔癢棒（18+）", "feather tickler"),
+    ("adult_toy_leather_paddle", "皮革拍板（18+）", "leather spanking paddle"),
+    ("adult_toy_nipple_suction_cups", "乳頭吸杯（18+）", "nipple suction cups"),
+)
+
+
+OUTFIT_UPPER_STATE_SAFE: Final[tuple[ClothingTagDefinition, ...]] = (
+    ("upper_state_buttoned", "上衣扣好", "buttoned upper garment"),
+    ("upper_state_zipped", "上衣拉鍊拉好", "zipped upper garment"),
+    ("upper_state_tucked_in", "上衣紮入下身", "tucked-in upper garment"),
+    ("upper_state_rolled_sleeves", "袖口捲起", "upper garment with rolled sleeves"),
+)
+OUTFIT_UPPER_STATE_ADULT: Final[tuple[ClothingTagDefinition, ...]] = (
+    ("upper_state_deeply_unbuttoned", "上衣大幅解扣（18+）", "deeply unbuttoned top"),
+    (
+        "upper_state_lifted_above_breasts",
+        "上衣掀至胸部上方（18+）",
+        "top lifted above the breasts",
+    ),
+    (
+        "upper_state_pulled_aside",
+        "上衣拉至一側（18+）",
+        "top pulled aside to expose the breasts",
+    ),
+    (
+        "upper_state_open_bare_torso",
+        "上衣敞開露出軀幹（18+）",
+        "open upper garment exposing the bare torso",
+    ),
+)
+
+
+OUTFIT_LOWER_STATE_SAFE: Final[tuple[ClothingTagDefinition, ...]] = (
+    ("lower_state_fastened", "下身服裝扣好", "fastened lower garment"),
+    ("lower_state_belted", "腰帶扣好", "securely belted lower garment"),
+    ("lower_state_cuffed", "褲腳反摺", "lower garment with rolled cuffs"),
+    ("lower_state_pressed", "下身服裝燙整", "neatly pressed lower garment"),
+)
+OUTFIT_LOWER_STATE_ADULT: Final[tuple[ClothingTagDefinition, ...]] = (
+    ("lower_state_unfastened", "下身服裝解扣（18+）", "unfastened lower garment"),
+    (
+        "lower_state_lowered_to_hips",
+        "下身服裝褪至胯部（18+）",
+        "lower garment lowered to the hips",
+    ),
+    (
+        "lower_state_lowered_to_thighs",
+        "下身服裝褪至大腿（18+）",
+        "lower garment lowered to the thighs",
+    ),
+    (
+        "lower_state_pulled_aside",
+        "下身服裝拉至一側（18+）",
+        "lower garment pulled aside",
+    ),
+)
+
+
+OUTFIT_BRA_STATE_SAFE: Final[tuple[ClothingTagDefinition, ...]] = (
+    ("bra_state_fastened", "內衣扣好", "bra neatly fastened"),
+    ("bra_state_straps_in_place", "肩帶位置整齊", "bra straps resting on both shoulders"),
+    ("bra_state_cups_fitted", "罩杯貼合", "properly fitted bra cups"),
+    ("bra_state_band_level", "下圍平整", "level bra band"),
+)
+OUTFIT_BRA_STATE_ADULT: Final[tuple[ClothingTagDefinition, ...]] = (
+    ("bra_state_unfastened", "內衣解扣（18+）", "unfastened bra"),
+    ("bra_state_strap_slipped", "肩帶滑落（18+）", "bra strap slipped off one shoulder"),
+    ("bra_state_cup_pulled_aside", "罩杯拉至一側（18+）", "bra cup pulled aside"),
+    ("bra_state_lifted", "內衣掀至胸部上方（18+）", "bra lifted above the breasts"),
+)
+
+
+OUTFIT_UNDERWEAR_STATE_SAFE: Final[tuple[ClothingTagDefinition, ...]] = (
+    ("underwear_state_worn", "內褲穿戴整齊", "properly worn underwear"),
+    ("underwear_state_flat_waistband", "褲頭平整", "flat underwear waistband"),
+    ("underwear_state_centered", "內褲位置端正", "properly centered underwear"),
+    ("underwear_state_seamless", "內褲線條平順", "smooth underwear lines"),
+)
+OUTFIT_UNDERWEAR_STATE_ADULT: Final[tuple[ClothingTagDefinition, ...]] = (
+    (
+        "underwear_state_lowered_to_hips",
+        "內褲褪至胯部（18+）",
+        "underwear lowered to the hips",
+    ),
+    (
+        "underwear_state_lowered_to_thighs",
+        "內褲褪至大腿（18+）",
+        "underwear lowered to the thighs",
+    ),
+    (
+        "underwear_state_pulled_aside",
+        "內褲襠部拉至一側（18+）",
+        "underwear pulled aside at the crotch",
+    ),
+    (
+        "underwear_state_one_leg_removed",
+        "內褲褪離單腿（18+）",
+        "underwear slipped off one leg",
+    ),
+)
+
+
+def _assert_exact_partition(
+    source: tuple[ClothingTagDefinition, ...],
+    partitions: tuple[tuple[ClothingTagDefinition, ...], ...],
+    *,
+    name: str,
+) -> None:
+    flattened = tuple(item for partition in partitions for item in partition)
+    if len(flattened) != len(set(flattened)):
+        raise ValueError(f"{name} partition contains duplicate definitions")
+    if len(flattened) != len(source) or set(flattened) != set(source):
+        raise ValueError(f"{name} partition must cover its source exactly once")
+
+
+def _assert_v12_catalog_integrity(
+    catalogs: tuple[tuple[ClothingTagDefinition, ...], ...],
+) -> None:
+    definitions = tuple(item for catalog in catalogs for item in catalog)
+    for field_index, field_name in ((0, "key"), (1, "label"), (2, "prompt")):
+        values = tuple(item[field_index] for item in definitions)
+        comparable = tuple(value.casefold() for value in values)
+        if len(comparable) != len(set(comparable)):
+            raise ValueError(f"V12 clothing {field_name} values must be globally unique")
+    for key, label, prompt in definitions:
+        if not key or not label or not prompt:
+            raise ValueError("V12 clothing definitions cannot contain blank fields")
+        if not any("\u3400" <= character <= "\u9fff" for character in label):
+            raise ValueError(f"V12 clothing label must contain Traditional Chinese: {key}")
+        if prompt != prompt.strip() or not prompt.isascii() or "," in prompt:
+            raise ValueError(f"V12 clothing prompt must be one clean English fragment: {key}")
+
+
+_assert_exact_partition(
+    OUTFIT_ARCHETYPE_SAFE,
+    (
+        _OUTFIT_UPPER_SAFE_SOURCE,
+        _OUTFIT_LOWER_SAFE_SOURCE,
+        _OUTFIT_ONE_PIECE_SAFE_SOURCE,
+        _OUTFIT_OUTERWEAR_SAFE_SOURCE,
+        _OUTFIT_BRA_SAFE_SOURCE,
+        _OUTFIT_UNDERWEAR_SAFE_SOURCE,
+        _OUTFIT_SLEEPWEAR_SAFE_SOURCE,
+        _OUTFIT_UNIFORM_SPORT_SAFE_SOURCE,
+        _OUTFIT_SWIMWEAR_SAFE_SOURCE,
+    ),
+    name="OUTFIT_ARCHETYPE_SAFE",
+)
+_assert_exact_partition(
+    OUTFIT_ARCHETYPE_ADULT,
+    (
+        _OUTFIT_BRA_ADULT_SOURCE,
+        OUTFIT_UNDERWEAR_ADULT,
+        OUTFIT_SLEEPWEAR_ADULT,
+        _OUTFIT_SWIMWEAR_ADULT_SOURCE,
+        _OUTFIT_LINGERIE_ADULT_SOURCE,
+    ),
+    name="OUTFIT_ARCHETYPE_ADULT",
+)
+_assert_exact_partition(
+    ACCESSORIES_SAFE,
+    (
+        _ACCESSORIES_HEAD_HAIR_SAFE_SOURCE,
+        _ACCESSORIES_FACE_NECK_SAFE_SOURCE,
+        _ACCESSORIES_HAND_ARM_SAFE_SOURCE,
+        _ACCESSORIES_WAIST_BODY_SAFE_SOURCE,
+        _ACCESSORIES_BAGS_SAFE_SOURCE,
+        _HOSIERY_STYLE_SAFE_SOURCE,
+    ),
+    name="ACCESSORIES_SAFE",
+)
+_assert_exact_partition(
+    ACCESSORIES_ADULT,
+    (
+        _SWIMWEAR_COVERUP_ADULT_SOURCE,
+        _HOSIERY_STYLE_ADULT_SOURCE,
+        _ACCESSORIES_INTIMATE_ADULT_SOURCE,
+    ),
+    name="ACCESSORIES_ADULT",
+)
+
+
+_V12_CATALOGS: Final[tuple[tuple[ClothingTagDefinition, ...], ...]] = (
+    OUTFIT_UPPER_SAFE,
+    OUTFIT_LOWER_SAFE,
+    OUTFIT_ONE_PIECE_SAFE,
+    OUTFIT_OUTERWEAR_SAFE,
+    OUTFIT_BRA_SAFE,
+    OUTFIT_UNDERWEAR_SAFE,
+    OUTFIT_SLEEPWEAR_SAFE,
+    OUTFIT_UNIFORM_SPORT_SAFE,
+    OUTFIT_SWIMWEAR_SAFE,
+    OUTFIT_BRA_ADULT,
+    OUTFIT_UNDERWEAR_ADULT,
+    OUTFIT_SLEEPWEAR_ADULT,
+    OUTFIT_SWIMWEAR_ADULT,
+    OUTFIT_LINGERIE_ADULT,
+    ACCESSORIES_HEAD_HAIR_SAFE,
+    ACCESSORIES_FACE_NECK_SAFE,
+    ACCESSORIES_HAND_ARM_SAFE,
+    ACCESSORIES_WAIST_BODY_SAFE,
+    ACCESSORIES_BAGS_SAFE,
+    HOSIERY_STYLE_SAFE,
+    HOSIERY_STYLE_ADULT,
+    ACCESSORIES_INTIMATE_ADULT,
+    HOSIERY_LENGTH_SAFE,
+    FOOTWEAR_SAFE,
+    FOOTWEAR_ADULT,
+    ADULT_TOYS,
+    OUTFIT_UPPER_STATE_SAFE,
+    OUTFIT_UPPER_STATE_ADULT,
+    OUTFIT_LOWER_STATE_SAFE,
+    OUTFIT_LOWER_STATE_ADULT,
+    OUTFIT_BRA_STATE_SAFE,
+    OUTFIT_BRA_STATE_ADULT,
+    OUTFIT_UNDERWEAR_STATE_SAFE,
+    OUTFIT_UNDERWEAR_STATE_ADULT,
+)
+_assert_v12_catalog_integrity(_V12_CATALOGS)

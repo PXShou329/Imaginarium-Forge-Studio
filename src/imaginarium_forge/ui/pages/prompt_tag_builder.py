@@ -25,6 +25,7 @@ from imaginarium_forge.application.services.prompt_tag_builder_service import (
     CHARACTER_IDENTITY_MODE_LABELS_ZH,
     CHARACTER_IDENTITY_MODES,
     CHARACTER_STATE_EXPRESSION_OVERRIDE_KEYS,
+    HOSIERY_ALLOWED_LENGTHS,
     INCAPACITATED_CONFLICT_OPTION_KEYS_BY_CATEGORY,
     NEGATIVE_CATEGORIES,
     CharacterIdentityMode,
@@ -200,7 +201,10 @@ _GROUP_HINTS: Final[dict[str, str]] = {
     ),
     "福瑞": "先選一個完整擬人物種；確認物種後才會展開福瑞細節。",
     "福瑞細節": "依物種調整完整擬人角色的體表、花紋、口鼻、腿腳、肢端與尾部。",
-    "服裝與配件": "職業造型、材質、色調與配件可以自由混搭。",
+    "服裝與配件": (
+        "先從上身、下身、連身服裝、內著、泳裝、襪類與配件部位逐項搭配；"
+        "頁面底部仍保留穿搭主題、材質、配色與經典配件總覽。"
+    ),
     "畫面與風格": "控制姿勢、取景、鏡頭、燈光、背景與成像風格。",
     "狀態": "可混搭一般狀態與情緒；成人模式開啟時，也會在同區顯示成年女性生理狀態。",
     "成人動作與表情（18+）": "只會在已確認 18+ 時出現；所有項目都維持成年、合意的內容邊界。",
@@ -219,17 +223,172 @@ _GROUP_HINTS: Final[dict[str, str]] = {
 }
 
 _CHARACTER_TRAILING_GROUP_ORDER: Final[tuple[str, ...]] = (
+    "畫面與風格",
     "狀態",
     "成人身體細節（18+）",
     "成人動作與表情（18+）",
+)
+_STANDARD_ADULT_GROUP_ORDER: Final[tuple[str, ...]] = (
+    "身分與輪廓",
+    "身材細節",
+    "臉部與眼睛",
+    "髮型與髮色",
+    "個性與奇幻特徵",
+    "服裝與配件",
+    *_CHARACTER_TRAILING_GROUP_ORDER,
+)
+_WARDROBE_CATEGORY_ORDER: Final[tuple[str, ...]] = (
+    "outfit_upper",
+    "outfit_lower",
+    "outfit_one_piece",
+    "outfit_outerwear",
+    "outfit_bra",
+    "outfit_underwear",
+    "outfit_sleepwear",
+    "outfit_uniform_sport",
+    "outfit_swimwear",
+    "outfit_lingerie",
+    "hosiery_style",
+    "hosiery_length",
+    "footwear",
+    "accessory_head_hair",
+    "accessory_face_neck",
+    "accessory_hand_arm",
+    "accessory_waist_body",
+    "accessory_bags",
+    "intimate_accessories",
+    "adult_toys",
+    "outfit_upper_state",
+    "outfit_lower_state",
+    "outfit_bra_state",
+    "outfit_underwear_state",
+    # Preserve the original broad selectors as optional finishing controls,
+    # without letting their large catalogs hide the composable wardrobe.
+    "outfit_archetype",
+    "outfit_materials",
+    "outfit_palette",
+    "accessories",
+)
+_WARDROBE_CATEGORY_ORDER_INDEX: Final[dict[str, int]] = {
+    key: index for index, key in enumerate(_WARDROBE_CATEGORY_ORDER)
+}
+_LEGACY_WARDROBE_CATEGORY_KEYS: Final[frozenset[str]] = frozenset(
+    {"outfit_archetype", "outfit_materials", "outfit_palette", "accessories"}
 )
 _ADULT_RANDOM_REQUIRED_GROUPS: Final[tuple[str, str]] = (
     "成人身體細節（18+）",
     "成人動作與表情（18+）",
 )
+_LAYERED_GARMENT_STATE_DEPENDENCIES: Final[dict[str, str]] = {
+    "outfit_upper_state": "outfit_upper",
+    "outfit_lower_state": "outfit_lower",
+    "outfit_bra_state": "outfit_bra",
+    "outfit_underwear_state": "outfit_underwear",
+}
+_LAYERED_GARMENT_DEPENDENT_STATES: Final[dict[str, frozenset[str]]] = {
+    garment_key: frozenset(
+        state_key
+        for state_key, target_key in _LAYERED_GARMENT_STATE_DEPENDENCIES.items()
+        if target_key == garment_key
+    )
+    for garment_key in frozenset(_LAYERED_GARMENT_STATE_DEPENDENCIES.values())
+}
+_LAYERED_CORE_GARMENT_CATEGORY_KEYS: Final[frozenset[str]] = frozenset(
+    {
+        "outfit_upper",
+        "outfit_lower",
+        "outfit_one_piece",
+        "outfit_outerwear",
+        "outfit_bra",
+        "outfit_underwear",
+        "outfit_sleepwear",
+        "outfit_uniform_sport",
+        "outfit_swimwear",
+        "outfit_lingerie",
+    }
+)
+_UPPER_LAYERED_GARMENT_CATEGORY_KEYS: Final[frozenset[str]] = frozenset(
+    {
+        "outfit_upper",
+        "outfit_one_piece",
+        "outfit_outerwear",
+        "outfit_bra",
+        "outfit_sleepwear",
+        "outfit_uniform_sport",
+        "outfit_swimwear",
+        "outfit_lingerie",
+    }
+)
+_CLOTHINGLESS_OUTFIT_KEYS: Final[frozenset[str]] = frozenset({"nude", "body_paint"})
+_CLOTHINGLESS_ALLOWED_FINISHING_KEYS: Final[
+    Mapping[str, Mapping[str, frozenset[str]]]
+] = {
+    "nude": {
+        "outfit_materials": frozenset({"bare_skin"}),
+        "outfit_palette": frozenset(
+            {
+                "natural_skin",
+                "adult_palette_warm_flushed_skin",
+                "adult_palette_cool_natural_skin",
+            }
+        ),
+    },
+    "body_paint": {
+        "outfit_materials": frozenset({"bare_skin"}),
+        "outfit_palette": frozenset(
+            {
+                "natural_skin",
+                "adult_palette_warm_flushed_skin",
+                "adult_palette_cool_natural_skin",
+                "adult_palette_metallic_body_paint",
+            }
+        ),
+    },
+}
+_NUDITY_DEPENDENT_CATEGORY_KEYS: Final[frozenset[str]] = frozenset(
+    {
+        "areola_size",
+        "areola_shape",
+        "areola_tone",
+        "nipple_size",
+        "nipple_shape",
+        "nipple_state",
+        "vulva_shape",
+        "labia_shape",
+        "pubic_hair_style",
+        "adult_body_adornment",
+        "adult_female_breast_hand_action",
+        "adult_female_breast_suckling_action",
+        "adult_female_lactation_action",
+        "adult_partner_intimacy",
+        "adult_female_masturbation_action",
+    }
+)
+_NUDITY_DEPENDENT_OPTION_KEYS: Final[dict[str, frozenset[str]]] = {
+    "outfit_materials": frozenset({"bare_skin"}),
+    "outfit_palette": frozenset(
+        {
+            "natural_skin",
+            "adult_palette_warm_flushed_skin",
+            "adult_palette_cool_natural_skin",
+            "adult_palette_metallic_body_paint",
+        }
+    ),
+    "accessories": frozenset(
+        {"nipple_jewelry", "adult_accessory_nipple_clamps"}
+    ),
+    "intimate_accessories": frozenset(
+        {"adult_accessory_nipple_pasties", "adult_accessory_chain_pasties"}
+    ),
+    "pose": frozenset({"artistic_nude", "nude_recline", "nude_back_arch"}),
+}
+_TOPLESS_DEPENDENT_POSE_KEYS: Final[frozenset[str]] = frozenset({"topless_pose"})
 _ADULT_RANDOM_NOTICE_STATE_KEY: Final = f"{STATE_PREFIX}_adult_random_notice"
 _TAG_BUTTONS_PER_HALF_ROW: Final = 4
 _TAG_BUTTONS_PER_WIDE_ROW: Final = 8
+_CENTERED_WIDE_HALF_ROW_CATEGORY_KEYS: Final[frozenset[str]] = frozenset(
+    {"expression"}
+)
 
 
 def _category_widget_key(kind: str, category: TagCategory) -> str:
@@ -659,6 +818,34 @@ def _contextual_option_display_label(
 def _render_local_styles() -> None:
     """Keep local actions and tag navigation stable, centered, and legible."""
 
+    expression = next(
+        category for category in CHARACTER_CATEGORIES if category.key == "expression"
+    )
+    expression_counts = {
+        len(expression.options),
+        sum(not option.adult_only for option in expression.options),
+    }
+    centered_expression_rules: list[str] = []
+    for option_count in sorted(expression_counts):
+        if option_count % _TAG_BUTTONS_PER_WIDE_ROW != _TAG_BUTTONS_PER_HALF_ROW:
+            continue
+        trailing_row = option_count // _TAG_BUTTONS_PER_WIDE_ROW + 1
+        first_trailing_option = option_count - _TAG_BUTTONS_PER_HALF_ROW + 1
+        count_guard = f':has(> button:nth-of-type({option_count}):last-of-type)'
+        for offset, column in enumerate(range(3, 7)):
+            option_index = first_trailing_option + offset
+            centered_expression_rules.append(
+                ".st-key-"
+                f"{STATE_PREFIX}_tag_category_character_expression "
+                '[data-testid="stButtonGroup"] '
+                f'> [role="radiogroup"]{count_guard} '
+                f"> button:nth-of-type({option_index}) {{"
+                f"grid-row: {trailing_row} !important; "
+                f"grid-column: {column} !important;"
+                "}"
+            )
+    centered_expression_css = "\n".join(centered_expression_rules)
+
     st.markdown(
         f"""
         <style>
@@ -683,12 +870,56 @@ def _render_local_styles() -> None:
         .st-key-{STATE_PREFIX}_background_fill_random button:hover * {{
             color: #fffaf2 !important;
         }}
+        .st-key-{STATE_PREFIX}_character_reroll button,
+        .st-key-{STATE_PREFIX}_background_reroll button {{
+            background: linear-gradient(180deg, #f4cf86, #dfa952) !important;
+            border-color: #efc36f !important;
+            color: #21170f !important;
+            box-shadow: 0 0.2rem 0.75rem rgba(223, 169, 82, 0.22) !important;
+        }}
+        .st-key-{STATE_PREFIX}_character_reroll button *,
+        .st-key-{STATE_PREFIX}_background_reroll button * {{
+            color: #21170f !important;
+        }}
+        .st-key-{STATE_PREFIX}_character_reroll button:hover,
+        .st-key-{STATE_PREFIX}_background_reroll button:hover {{
+            background: linear-gradient(180deg, #ffdda0, #e8b967) !important;
+            border-color: #ffd98f !important;
+            color: #17100b !important;
+        }}
+        .st-key-{STATE_PREFIX}_character_reroll button:hover *,
+        .st-key-{STATE_PREFIX}_background_reroll button:hover * {{
+            color: #17100b !important;
+        }}
+        .st-key-{STATE_PREFIX}_character_fill_random button,
+        .st-key-{STATE_PREFIX}_character_reroll button,
+        .st-key-{STATE_PREFIX}_character_clear button,
+        .st-key-{STATE_PREFIX}_background_fill_random button,
+        .st-key-{STATE_PREFIX}_background_reroll button,
+        .st-key-{STATE_PREFIX}_background_clear button {{
+            min-height: 3.125rem !important;
+            padding: 0.55rem 0.9rem !important;
+            font-size: 1rem !important;
+            font-weight: 750 !important;
+        }}
+        .st-key-{STATE_PREFIX}_character_fill_random button *,
+        .st-key-{STATE_PREFIX}_character_reroll button *,
+        .st-key-{STATE_PREFIX}_character_clear button *,
+        .st-key-{STATE_PREFIX}_background_fill_random button *,
+        .st-key-{STATE_PREFIX}_background_reroll button *,
+        .st-key-{STATE_PREFIX}_background_clear button * {{
+            font-size: 1rem !important;
+            font-weight: 750 !important;
+        }}
         .st-key-{STATE_PREFIX}_character_group_nav,
+        .st-key-{STATE_PREFIX}_character_group_nav_standard_adult,
         .st-key-{STATE_PREFIX}_character_group_nav_adult,
         .st-key-{STATE_PREFIX}_background_group_nav {{
             container-type: inline-size;
         }}
         .st-key-{STATE_PREFIX}_character_group_nav
+        [data-testid="stButtonGroup"] > [role="radiogroup"],
+        .st-key-{STATE_PREFIX}_character_group_nav_standard_adult
         [data-testid="stButtonGroup"] > [role="radiogroup"],
         .st-key-{STATE_PREFIX}_character_group_nav_adult
         [data-testid="stButtonGroup"] > [role="radiogroup"],
@@ -700,6 +931,8 @@ def _render_local_styles() -> None:
             gap: 0.25rem !important;
         }}
         .st-key-{STATE_PREFIX}_character_group_nav
+        [data-testid="stButtonGroup"] > [role="radiogroup"] > button,
+        .st-key-{STATE_PREFIX}_character_group_nav_standard_adult
         [data-testid="stButtonGroup"] > [role="radiogroup"] > button,
         .st-key-{STATE_PREFIX}_character_group_nav_adult
         [data-testid="stButtonGroup"] > [role="radiogroup"] > button,
@@ -723,30 +956,21 @@ def _render_local_styles() -> None:
         }}
         .st-key-{STATE_PREFIX}_character_group_nav_adult
         [data-testid="stButtonGroup"] > [role="radiogroup"] {{
-            grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        }}
+        .st-key-{STATE_PREFIX}_character_group_nav_standard_adult
+        [data-testid="stButtonGroup"] > [role="radiogroup"] {{
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
         }}
         .st-key-{STATE_PREFIX}_character_group_nav_adult
         [data-testid="stButtonGroup"] > [role="radiogroup"]
-        > button:not(:nth-last-child(-n + 3)) {{
-            grid-column: span 3 !important;
-        }}
-        .st-key-{STATE_PREFIX}_character_group_nav_adult
-        [data-testid="stButtonGroup"] > [role="radiogroup"]
-        > button:nth-last-child(3) {{
-            grid-column: 1 / span 4 !important;
-        }}
-        .st-key-{STATE_PREFIX}_character_group_nav_adult
-        [data-testid="stButtonGroup"] > [role="radiogroup"]
-        > button:nth-last-child(2) {{
-            grid-column: 5 / span 4 !important;
-        }}
-        .st-key-{STATE_PREFIX}_character_group_nav_adult
-        [data-testid="stButtonGroup"] > [role="radiogroup"]
-        > button:last-child {{
-            grid-column: 9 / span 4 !important;
+        > button:nth-last-child(4) {{
+            grid-column: 1 !important;
         }}
         @container (max-width: 42rem) {{
             .st-key-{STATE_PREFIX}_character_group_nav
+            [data-testid="stButtonGroup"] > [role="radiogroup"],
+            .st-key-{STATE_PREFIX}_character_group_nav_standard_adult
             [data-testid="stButtonGroup"] > [role="radiogroup"],
             .st-key-{STATE_PREFIX}_character_group_nav_adult
             [data-testid="stButtonGroup"] > [role="radiogroup"],
@@ -756,31 +980,22 @@ def _render_local_styles() -> None:
             }}
             .st-key-{STATE_PREFIX}_character_group_nav_adult
             [data-testid="stButtonGroup"] > [role="radiogroup"] {{
-                grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            }}
+            .st-key-{STATE_PREFIX}_character_group_nav_standard_adult
+            [data-testid="stButtonGroup"] > [role="radiogroup"] {{
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
             }}
             .st-key-{STATE_PREFIX}_character_group_nav_adult
             [data-testid="stButtonGroup"] > [role="radiogroup"]
-            > button:not(:nth-last-child(-n + 3)) {{
-                grid-column: span 3 !important;
-            }}
-            .st-key-{STATE_PREFIX}_character_group_nav_adult
-            [data-testid="stButtonGroup"] > [role="radiogroup"]
-            > button:nth-last-child(3) {{
-                grid-column: 1 / span 2 !important;
-            }}
-            .st-key-{STATE_PREFIX}_character_group_nav_adult
-            [data-testid="stButtonGroup"] > [role="radiogroup"]
-            > button:nth-last-child(2) {{
-                grid-column: 3 / span 2 !important;
-            }}
-            .st-key-{STATE_PREFIX}_character_group_nav_adult
-            [data-testid="stButtonGroup"] > [role="radiogroup"]
-            > button:last-child {{
-                grid-column: 5 / span 2 !important;
+            > button:nth-last-child(4) {{
+                grid-column: 1 !important;
             }}
         }}
         @container (max-width: 24rem) {{
             .st-key-{STATE_PREFIX}_character_group_nav
+            [data-testid="stButtonGroup"] > [role="radiogroup"],
+            .st-key-{STATE_PREFIX}_character_group_nav_standard_adult
             [data-testid="stButtonGroup"] > [role="radiogroup"],
             .st-key-{STATE_PREFIX}_background_group_nav
             [data-testid="stButtonGroup"] > [role="radiogroup"] {{
@@ -788,27 +1003,16 @@ def _render_local_styles() -> None:
             }}
             .st-key-{STATE_PREFIX}_character_group_nav_adult
             [data-testid="stButtonGroup"] > [role="radiogroup"] {{
-                grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+                grid-template-columns: minmax(0, 1fr) !important;
+            }}
+            .st-key-{STATE_PREFIX}_character_group_nav_standard_adult
+            [data-testid="stButtonGroup"] > [role="radiogroup"] {{
+                grid-template-columns: minmax(0, 1fr) !important;
             }}
             .st-key-{STATE_PREFIX}_character_group_nav_adult
             [data-testid="stButtonGroup"] > [role="radiogroup"]
-            > button:not(:nth-last-child(-n + 3)) {{
-                grid-column: 1 / -1 !important;
-            }}
-            .st-key-{STATE_PREFIX}_character_group_nav_adult
-            [data-testid="stButtonGroup"] > [role="radiogroup"]
-            > button:nth-last-child(3) {{
-                grid-column: 1 / span 2 !important;
-            }}
-            .st-key-{STATE_PREFIX}_character_group_nav_adult
-            [data-testid="stButtonGroup"] > [role="radiogroup"]
-            > button:nth-last-child(2) {{
-                grid-column: 3 / span 2 !important;
-            }}
-            .st-key-{STATE_PREFIX}_character_group_nav_adult
-            [data-testid="stButtonGroup"] > [role="radiogroup"]
-            > button:last-child {{
-                grid-column: 5 / span 2 !important;
+            > button:nth-last-child(4) {{
+                grid-column: 1 !important;
             }}
         }}
         [class*="st-key-{STATE_PREFIX}_tag_category_"] {{
@@ -880,6 +1084,9 @@ def _render_local_styles() -> None:
             margin: 0 !important;
             overflow-wrap: anywhere !important;
             line-height: 1.25 !important;
+        }}
+        @container if-tag-category (min-width: 72.001rem) {{
+            {centered_expression_css}
         }}
         @container if-tag-category (max-width: 72rem) {{
             [class*="st-key-{STATE_PREFIX}_tag_category_"]
@@ -1260,18 +1467,170 @@ def _remove_category_selection_keys(
         st.session_state[_selection_tracker_key(kind, category)] = list(retained)
 
 
+def _normalize_manual_clothing_change(
+    kind: str,
+    category: TagCategory,
+    selected: set[str],
+) -> None:
+    """Make the newest manual nude/clothing choice win in visible UI state."""
+
+    if category.key == "outfit_archetype":
+        if selected & _CLOTHINGLESS_OUTFIT_KEYS:
+            cleared_categories = _LAYERED_CORE_GARMENT_CATEGORY_KEYS
+        elif "topless" in selected:
+            cleared_categories = _UPPER_LAYERED_GARMENT_CATEGORY_KEYS
+        else:
+            return
+        dependent_states = frozenset(
+            state_key
+            for garment_key in cleared_categories
+            for state_key in _LAYERED_GARMENT_DEPENDENT_STATES.get(garment_key, ())
+        )
+        _clear_category_selection_state(
+            kind,
+            frozenset({*cleared_categories, *dependent_states}),
+        )
+        return
+
+    if category.key not in _LAYERED_CORE_GARMENT_CATEGORY_KEYS or not selected:
+        return
+    conflicting_anchors = set(_CLOTHINGLESS_OUTFIT_KEYS)
+    if category.key in _UPPER_LAYERED_GARMENT_CATEGORY_KEYS:
+        conflicting_anchors.add("topless")
+    active_conflicts = set(
+        _selected_category_values(kind, "outfit_archetype")
+    ) & conflicting_anchors
+    if not active_conflicts:
+        return
+
+    _remove_category_selection_keys(
+        kind,
+        "outfit_archetype",
+        frozenset(active_conflicts),
+    )
+    for category_key, blocked_keys in _NUDITY_DEPENDENT_OPTION_KEYS.items():
+        _remove_category_selection_keys(kind, category_key, blocked_keys)
+    if category.key in _UPPER_LAYERED_GARMENT_CATEGORY_KEYS:
+        _remove_category_selection_keys(
+            kind,
+            "pose",
+            _TOPLESS_DEPENDENT_POSE_KEYS,
+        )
+    _clear_category_selection_state(kind, _NUDITY_DEPENDENT_CATEGORY_KEYS)
+
+
+def _normalize_clothingless_finishing_change(
+    kind: str,
+    category: TagCategory,
+    selected: set[str],
+) -> None:
+    """Remove stale fabric and clothing-palette values from a nude anchor."""
+
+    if category.key != "outfit_archetype":
+        return
+    clothingless = selected & _CLOTHINGLESS_OUTFIT_KEYS
+    if not clothingless:
+        return
+
+    for finishing_category in ("outfit_materials", "outfit_palette"):
+        allowed = frozenset().union(
+            *(
+                _CLOTHINGLESS_ALLOWED_FINISHING_KEYS[anchor][finishing_category]
+                for anchor in clothingless
+            )
+        )
+        current = frozenset(_selected_category_values(kind, finishing_category))
+        _remove_category_selection_keys(
+            kind,
+            finishing_category,
+            current - allowed,
+        )
+
+
+def _normalize_manual_hosiery_change(
+    kind: str,
+    category: TagCategory,
+    selected: set[str],
+) -> None:
+    """Make the latest hosiery style or length win without stale fragments."""
+
+    style_key = "hosiery_style"
+    length_key = "hosiery_length"
+    if category.key == style_key:
+        if not selected:
+            _clear_category_selection_state(kind, frozenset({length_key}))
+            return
+        allowed = set.intersection(
+            *(set(HOSIERY_ALLOWED_LENGTHS[option_key]) for option_key in selected)
+        )
+        current_lengths = frozenset(_selected_category_values(kind, length_key))
+        blocked = current_lengths - allowed
+        if not blocked:
+            return
+        _remove_category_selection_keys(kind, length_key, blocked)
+        length_category = next(
+            item for item in CHARACTER_CATEGORIES if item.key == length_key
+        )
+        st.session_state[_selection_notice_key(kind, length_category)] = (
+            "襪長與最新襪類不相容，已清除舊襪長。"
+        )
+        return
+
+    if category.key != length_key or not selected:
+        return
+    selected_length = next(iter(selected))
+    current_styles = frozenset(_selected_category_values(kind, style_key))
+    blocked_styles = frozenset(
+        option_key
+        for option_key in current_styles
+        if selected_length not in HOSIERY_ALLOWED_LENGTHS[option_key]
+    )
+    if not blocked_styles:
+        return
+    _remove_category_selection_keys(kind, style_key, blocked_styles)
+    style_category = next(item for item in CHARACTER_CATEGORIES if item.key == style_key)
+    st.session_state[_selection_notice_key(kind, style_category)] = (
+        "襪長與舊襪類不相容，已保留最新襪長並移除衝突襪類。"
+    )
+
+
 def _handle_category_change(kind: str, category: TagCategory) -> None:
-    """Apply limits and make the newest mutually exclusive activity phase win."""
+    """Persist the edit, then apply limits and mutual-exclusion rules."""
 
     _enforce_selection_limit(kind, category)
+    widget_key = _category_widget_key(kind, category)
+    stored = _selection_store(kind)
+    stored[category.key] = _normalize_selection_value(
+        category,
+        st.session_state.get(widget_key),
+    )
+    _write_selection_store_if_changed(kind, stored)
     if kind == "character" and (
-        category.key == "outfit_archetype"
+        category.group == "服裝與配件"
         or category.group in _ADULT_RANDOM_REQUIRED_GROUPS
     ):
         st.session_state.pop(_ADULT_RANDOM_NOTICE_STATE_KEY, None)
     if kind != "character":
         return
     selected = set(_selected_category_values(kind, category.key))
+    _normalize_manual_clothing_change(kind, category, selected)
+    _normalize_clothingless_finishing_change(kind, category, selected)
+    _normalize_manual_hosiery_change(kind, category, selected)
+    dependent_state_keys = _LAYERED_GARMENT_DEPENDENT_STATES.get(category.key)
+    if dependent_state_keys is not None and not selected:
+        _clear_category_selection_state(kind, dependent_state_keys)
+        return
+    target_garment_key = _LAYERED_GARMENT_STATE_DEPENDENCIES.get(category.key)
+    if (
+        target_garment_key is not None
+        and selected
+        and not _selected_category_values(kind, target_garment_key)
+    ):
+        _clear_category_selection_state(kind, frozenset({category.key}))
+        st.session_state[_selection_notice_key(kind, category)] = (
+            "請先選擇對應服裝，再設定穿著狀態。"
+        )
+        return
     if not selected:
         return
     if category.key == _AFTERCARE_ACTIVITY_CATEGORY_KEY:
@@ -1445,6 +1804,7 @@ def _render_random_controls(
         reroll.button(
             "全部重新隨機",
             key=f"{STATE_PREFIX}_{kind}_reroll",
+            type="primary",
             use_container_width=True,
             help=f"重新抽取所有{labels}標籤。",
             on_click=reroll_action,
@@ -1452,6 +1812,7 @@ def _render_random_controls(
     elif reroll.button(
         "全部重新隨機",
         key=f"{STATE_PREFIX}_{kind}_reroll",
+        type="primary",
         use_container_width=True,
         help=f"重新抽取所有{labels}標籤。",
     ):
@@ -1477,7 +1838,23 @@ def _grouped_category_rows(
     grouped: dict[str, list[TagCategory]] = {}
     for category in categories:
         grouped.setdefault(category.group, []).append(category)
-    rows = tuple((group, tuple(items)) for group, items in grouped.items())
+    rows = tuple(
+        (
+            group,
+            tuple(
+                sorted(
+                    items,
+                    key=lambda category: _WARDROBE_CATEGORY_ORDER_INDEX.get(
+                        category.key,
+                        len(_WARDROBE_CATEGORY_ORDER_INDEX),
+                    ),
+                )
+                if group == "服裝與配件"
+                else items
+            ),
+        )
+        for group, items in grouped.items()
+    )
     trailing = {
         group: index for index, group in enumerate(_CHARACTER_TRAILING_GROUP_ORDER)
     }
@@ -1501,12 +1878,41 @@ def _balanced_category_rows(
     columns in that row as tall as the larger widget, leaving what looks like a
     large unfinished area below the shorter one.  Exact four-column row counts
     are now the pairing contract.  A category without an equal-height partner
-    receives the full eight-column width and must also fill that wider row.
+    receives the full eight-column width.  A scoped category may finish with a
+    centered four-button half-row while retaining the same button size and the
+    responsive four/two/one-column grids.
     """
 
     pending_by_height: dict[int, tuple[int, TagCategory]] = {}
     rows: list[tuple[int, TagCategory, TagCategory | None]] = []
+
+    def flush_pending() -> None:
+        for index, pending_category in pending_by_height.values():
+            remainder = len(pending_category.options) % _TAG_BUTTONS_PER_WIDE_ROW
+            allows_centered_half_row = (
+                pending_category.key in _CENTERED_WIDE_HALF_ROW_CATEGORY_KEYS
+                and remainder == _TAG_BUTTONS_PER_HALF_ROW
+            )
+            if remainder and not allows_centered_half_row:
+                raise ValueError(
+                    f"標籤分類 {pending_category.key!r} 的選項數必須填滿八欄寬版按鈕網格"
+                )
+            rows.append((index, pending_category, None))
+        pending_by_height.clear()
+
+    previous_is_legacy_wardrobe: bool | None = None
     for index, category in enumerate(categories):
+        is_legacy_wardrobe = category.key in _LEGACY_WARDROBE_CATEGORY_KEYS
+        if (
+            previous_is_legacy_wardrobe is not None
+            and is_legacy_wardrobe != previous_is_legacy_wardrobe
+        ):
+            # Keep the four broad legacy selectors after every composable
+            # clothing editor. Pairing equal-height widgets across this
+            # boundary made one legacy selector jump into the middle whenever
+            # a new layered category happened to share its row height.
+            flush_pending()
+        previous_is_legacy_wardrobe = is_legacy_wardrobe
         option_count = len(category.options)
         if option_count % _TAG_BUTTONS_PER_HALF_ROW:
             raise ValueError(
@@ -1520,12 +1926,7 @@ def _balanced_category_rows(
         first_index, first = pending
         rows.append((first_index, first, category))
 
-    for index, category in pending_by_height.values():
-        if len(category.options) % _TAG_BUTTONS_PER_WIDE_ROW:
-            raise ValueError(
-                f"標籤分類 {category.key!r} 的選項數必須填滿八欄寬版按鈕網格"
-            )
-        rows.append((index, category, None))
+    flush_pending()
     rows.sort(key=lambda row: row[0])
     return tuple((left, right) for _index, left, right in rows)
 
@@ -1626,6 +2027,16 @@ def _render_group_overview(
             )
 
 
+def _group_navigation_container_key(kind: str, groups: tuple[str, ...]) -> str:
+    """Choose a semantic layout hook without inserting placeholder options."""
+
+    if kind == "character" and groups == _STANDARD_ADULT_GROUP_ORDER:
+        return f"{STATE_PREFIX}_{kind}_group_nav_standard_adult"
+    if kind == "character" and groups[-4:] == _CHARACTER_TRAILING_GROUP_ORDER:
+        return f"{STATE_PREFIX}_{kind}_group_nav_adult"
+    return f"{STATE_PREFIX}_{kind}_group_nav"
+
+
 def _visible_group_rows(
     kind: str,
     category_rows: tuple[tuple[str, tuple[TagCategory, ...]], ...],
@@ -1649,14 +2060,7 @@ def _visible_group_rows(
             durable_group if durable_group in navigation_options else groups[0]
         )
 
-    has_adult_tail = (
-        kind == "character" and groups[-3:] == _CHARACTER_TRAILING_GROUP_ORDER
-    )
-    navigation_container_key = (
-        f"{STATE_PREFIX}_{kind}_group_nav_adult"
-        if has_adult_tail
-        else f"{STATE_PREFIX}_{kind}_group_nav"
-    )
+    navigation_container_key = _group_navigation_container_key(kind, groups)
     with st.container(key=navigation_container_key):
         active_group = st.pills(
             "想調整哪一類？",

@@ -18,14 +18,44 @@ from dataclasses import dataclass
 from typing import Final, Literal, cast
 
 from imaginarium_forge.application.services.clothing_tag_catalog import (
-    ACCESSORIES_ADULT,
-    ACCESSORIES_SAFE,
-    OUTFIT_ARCHETYPE_ADULT,
-    OUTFIT_ARCHETYPE_SAFE,
+    ACCESSORIES_BAGS_SAFE,
+    ACCESSORIES_FACE_NECK_SAFE,
+    ACCESSORIES_HAND_ARM_SAFE,
+    ACCESSORIES_HEAD_HAIR_SAFE,
+    ACCESSORIES_INTIMATE_ADULT,
+    ACCESSORIES_WAIST_BODY_SAFE,
+    ADULT_TOYS,
+    FOOTWEAR_ADULT,
+    FOOTWEAR_SAFE,
+    HOSIERY_LENGTH_SAFE,
+    HOSIERY_STYLE_ADULT,
+    HOSIERY_STYLE_SAFE,
+    OUTFIT_BRA_ADULT,
+    OUTFIT_BRA_SAFE,
+    OUTFIT_BRA_STATE_ADULT,
+    OUTFIT_BRA_STATE_SAFE,
+    OUTFIT_LINGERIE_ADULT,
+    OUTFIT_LOWER_SAFE,
+    OUTFIT_LOWER_STATE_ADULT,
+    OUTFIT_LOWER_STATE_SAFE,
     OUTFIT_MATERIALS_ADULT,
     OUTFIT_MATERIALS_SAFE,
+    OUTFIT_ONE_PIECE_SAFE,
+    OUTFIT_OUTERWEAR_SAFE,
     OUTFIT_PALETTE_ADULT,
     OUTFIT_PALETTE_SAFE,
+    OUTFIT_SLEEPWEAR_ADULT,
+    OUTFIT_SLEEPWEAR_SAFE,
+    OUTFIT_SWIMWEAR_ADULT,
+    OUTFIT_SWIMWEAR_SAFE,
+    OUTFIT_UNDERWEAR_ADULT,
+    OUTFIT_UNDERWEAR_SAFE,
+    OUTFIT_UNDERWEAR_STATE_ADULT,
+    OUTFIT_UNDERWEAR_STATE_SAFE,
+    OUTFIT_UNIFORM_SPORT_SAFE,
+    OUTFIT_UPPER_SAFE,
+    OUTFIT_UPPER_STATE_ADULT,
+    OUTFIT_UPPER_STATE_SAFE,
 )
 from imaginarium_forge.domain.character.biography_draft import (
     normalize_english_image_prompt,
@@ -616,6 +646,28 @@ _BASE_CHARACTER_CATEGORIES: Final[tuple[TagCategory, ...]] = (
         "expression",
         "面部表情／情緒",
         "個性與奇幻特徵",
+        (
+            "tsundere",
+            "傲嬌",
+            "tsundere personality with a prickly aloof exterior masking shy affection",
+        ),
+        (
+            "yandere",
+            "病嬌",
+            "yandere personality with an outwardly sweet demeanor and obsessively "
+            "possessive devotion",
+        ),
+        (
+            "kuudere",
+            "冷嬌／冰山美人",
+            "kuudere personality with a cool emotionally reserved exterior and hidden tenderness",
+        ),
+        (
+            "dandere",
+            "害羞內向／無口",
+            "dandere personality with a quiet shy introverted demeanor that opens up around "
+            "trusted companions",
+        ),
         ("gentle", "溫柔", "gentle expression"),
         ("cheerful", "開朗", "cheerful expression"),
         ("shy", "害羞", "shy expression"),
@@ -667,7 +719,7 @@ _BASE_CHARACTER_CATEGORIES: Final[tuple[TagCategory, ...]] = (
     ),
     _single(
         "outfit_archetype",
-        "服裝主題",
+        "穿搭主題／基底",
         "服裝與配件",
         ("casual", "日常休閒", "layered casual outfit"),
         ("streetwear", "潮流街頭", "modern streetwear"),
@@ -721,7 +773,7 @@ _BASE_CHARACTER_CATEGORIES: Final[tuple[TagCategory, ...]] = (
     ),
     _multi(
         "accessories",
-        "配件／持有物",
+        "經典配件／裝備",
         "服裝與配件",
         ("earrings", "耳環", "distinctive earrings"),
         ("necklace", "項鍊", "ornate necklace"),
@@ -6406,11 +6458,224 @@ _CHARACTER_OPTION_EXTENSIONS_V10: Final[dict[str, tuple[TagOption, ...]]] = {
 }
 
 
-_CHARACTER_OPTION_EXTENSIONS_V11: Final[dict[str, tuple[TagOption, ...]]] = {
-    "outfit_archetype": (
-        *_extra_options(*OUTFIT_ARCHETYPE_SAFE),
-        *tuple(_adult_option(*value) for value in OUTFIT_ARCHETYPE_ADULT),
+def _layered_clothing_category(
+    key: str,
+    label_zh: str,
+    safe_options: Sequence[tuple[str, str, str]],
+    *,
+    adult_options: Sequence[tuple[str, str, str]] = (),
+    selection_max: int,
+    help_text: str,
+) -> TagCategory:
+    """Build one manually composable wardrobe slot.
+
+    Random generation is owned by the wardrobe recipe below instead of the
+    generic per-category sampler.  That prevents mutually exclusive slots,
+    such as a dress, trousers, and swimwear, from all being filled at once.
+    """
+
+    return TagCategory(
+        key=key,
+        label_zh=label_zh,
+        group="服裝與配件",
+        options=(
+            *_extra_options(*safe_options),
+            *tuple(_adult_option(*value) for value in adult_options),
+        ),
+        selection_mode="multi",
+        help_text=help_text,
+        random_min=0,
+        random_max=selection_max,
+        selection_max=selection_max,
+    )
+
+
+_LAYERED_CLOTHING_CATEGORIES: Final[tuple[TagCategory, ...]] = (
+    _layered_clothing_category(
+        "outfit_upper",
+        "上身服裝",
+        OUTFIT_UPPER_SAFE,
+        selection_max=2,
+        help_text="可疊加最多兩件上身單品；完整隨機會與下身或其他主服裝配成一套。",
     ),
+    _layered_clothing_category(
+        "outfit_lower",
+        "下身服裝",
+        OUTFIT_LOWER_SAFE,
+        selection_max=2,
+        help_text="可搭配褲裝與裙裝；完整隨機不會只留下內褲或絲襪。",
+    ),
+    _layered_clothing_category(
+        "outfit_one_piece",
+        "連身服裝",
+        OUTFIT_ONE_PIECE_SAFE,
+        selection_max=2,
+        help_text="洋裝、連身褲與其他完整單件服裝，可與外套或配件疊穿。",
+    ),
+    _layered_clothing_category(
+        "outfit_outerwear",
+        "外套與披掛",
+        OUTFIT_OUTERWEAR_SAFE,
+        selection_max=2,
+        help_text="外套、披風與披肩，可與上身／下身或連身服裝搭配。",
+    ),
+    _layered_clothing_category(
+        "outfit_bra",
+        "內衣／胸罩",
+        OUTFIT_BRA_SAFE,
+        adult_options=OUTFIT_BRA_ADULT,
+        selection_max=2,
+        help_text="選擇內衣版型；18+ 款式只會在成人模式顯示。",
+    ),
+    _layered_clothing_category(
+        "outfit_underwear",
+        "內褲",
+        OUTFIT_UNDERWEAR_SAFE,
+        adult_options=OUTFIT_UNDERWEAR_ADULT,
+        selection_max=2,
+        help_text="可選不同內褲版型，但完整隨機一定會另配主服裝。",
+    ),
+    _layered_clothing_category(
+        "outfit_sleepwear",
+        "睡衣與居家服",
+        OUTFIT_SLEEPWEAR_SAFE,
+        adult_options=OUTFIT_SLEEPWEAR_ADULT,
+        selection_max=2,
+        help_text="睡衣、睡袍與居家穿搭可作為完整主服裝。",
+    ),
+    _layered_clothing_category(
+        "outfit_uniform_sport",
+        "正裝、制服與運動服",
+        OUTFIT_UNIFORM_SPORT_SAFE,
+        selection_max=2,
+        help_text="正式套裝、工作服與運動服單品，可自由混合搭配。",
+    ),
+    _layered_clothing_category(
+        "outfit_swimwear",
+        "泳裝／比基尼",
+        OUTFIT_SWIMWEAR_SAFE,
+        adult_options=OUTFIT_SWIMWEAR_ADULT,
+        selection_max=2,
+        help_text="泳褲、連身泳裝與比基尼；完整隨機會把它視為主服裝。",
+    ),
+    _layered_clothing_category(
+        "outfit_lingerie",
+        "成人情趣服飾",
+        (),
+        adult_options=OUTFIT_LINGERIE_ADULT,
+        selection_max=2,
+        help_text="只限已確認 18+ 的合意成年角色，可與內衣、內褲或睡袍搭配。",
+    ),
+    _layered_clothing_category(
+        "accessory_head_hair",
+        "頭部與髮飾",
+        ACCESSORIES_HEAD_HAIR_SAFE,
+        selection_max=2,
+        help_text="帽子、頭巾與髮飾。",
+    ),
+    _layered_clothing_category(
+        "accessory_face_neck",
+        "臉、頸與正裝配件",
+        ACCESSORIES_FACE_NECK_SAFE,
+        selection_max=2,
+        help_text="領帶、領巾、面紗與其他臉頸配件。",
+    ),
+    _layered_clothing_category(
+        "accessory_hand_arm",
+        "手部與手臂配件",
+        ACCESSORIES_HAND_ARM_SAFE,
+        selection_max=2,
+        help_text="手套、手錶、手環與上臂飾品。",
+    ),
+    _layered_clothing_category(
+        "accessory_waist_body",
+        "腰部與身體配件",
+        ACCESSORIES_WAIST_BODY_SAFE,
+        selection_max=2,
+        help_text="腰帶、吊帶、斜掛帶與身體配件。",
+    ),
+    _layered_clothing_category(
+        "accessory_bags",
+        "包袋與隨身收納",
+        ACCESSORIES_BAGS_SAFE,
+        selection_max=2,
+        help_text="背包、側背包、手提包與腰包。",
+    ),
+    _layered_clothing_category(
+        "hosiery_style",
+        "襪子／絲襪類型",
+        HOSIERY_STYLE_SAFE,
+        adult_options=HOSIERY_STYLE_ADULT,
+        selection_max=2,
+        help_text="先選襪子或絲襪類型，再用襪長補充覆蓋高度。",
+    ),
+    _layered_clothing_category(
+        "hosiery_length",
+        "襪子長度",
+        HOSIERY_LENGTH_SAFE,
+        selection_max=1,
+        help_text="可留白；搭配襪子或絲襪時選擇一種長度。",
+    ),
+    _layered_clothing_category(
+        "footwear",
+        "鞋類",
+        FOOTWEAR_SAFE,
+        adult_options=FOOTWEAR_ADULT,
+        selection_max=2,
+        help_text="鞋、靴與涼鞋，可複選以描述成套或替換方案。",
+    ),
+    _layered_clothing_category(
+        "intimate_accessories",
+        "成人情趣配件",
+        (),
+        adult_options=ACCESSORIES_INTIMATE_ADULT,
+        selection_max=2,
+        help_text="只限已確認 18+ 的合意成年角色；包含身體飾品與情趣配件。",
+    ),
+    _layered_clothing_category(
+        "adult_toys",
+        "成人情趣用品",
+        (),
+        adult_options=ADULT_TOYS,
+        selection_max=1,
+        help_text="只限已確認 18+ 的合意成年角色；完整隨機最多加入一項。",
+    ),
+    _layered_clothing_category(
+        "outfit_upper_state",
+        "上衣狀態",
+        OUTFIT_UPPER_STATE_SAFE,
+        adult_options=OUTFIT_UPPER_STATE_ADULT,
+        selection_max=1,
+        help_text="可留白；狀態會獨立同步到 Prompt，不會改動已選上衣。",
+    ),
+    _layered_clothing_category(
+        "outfit_lower_state",
+        "下身服裝狀態",
+        OUTFIT_LOWER_STATE_SAFE,
+        adult_options=OUTFIT_LOWER_STATE_ADULT,
+        selection_max=1,
+        help_text="可留白；一次只保留一種下身服裝狀態。",
+    ),
+    _layered_clothing_category(
+        "outfit_bra_state",
+        "內衣狀態",
+        OUTFIT_BRA_STATE_SAFE,
+        adult_options=OUTFIT_BRA_STATE_ADULT,
+        selection_max=1,
+        help_text="可留白；一次只保留一種內衣狀態。",
+    ),
+    _layered_clothing_category(
+        "outfit_underwear_state",
+        "內褲狀態",
+        OUTFIT_UNDERWEAR_STATE_SAFE,
+        adult_options=OUTFIT_UNDERWEAR_STATE_ADULT,
+        selection_max=1,
+        help_text="可留白；一次只保留一種內褲狀態。",
+    ),
+)
+
+
+_CHARACTER_OPTION_EXTENSIONS_V11: Final[dict[str, tuple[TagOption, ...]]] = {
     "outfit_materials": (
         *_extra_options(*OUTFIT_MATERIALS_SAFE),
         *tuple(_adult_option(*value) for value in OUTFIT_MATERIALS_ADULT),
@@ -6419,9 +6684,34 @@ _CHARACTER_OPTION_EXTENSIONS_V11: Final[dict[str, tuple[TagOption, ...]]] = {
         *_extra_options(*OUTFIT_PALETTE_SAFE),
         *tuple(_adult_option(*value) for value in OUTFIT_PALETTE_ADULT),
     ),
-    "accessories": (
-        *_extra_options(*ACCESSORIES_SAFE),
-        *tuple(_adult_option(*value) for value in ACCESSORIES_ADULT),
+}
+
+
+_ADULT_EXPRESSION_GRID_OPTION_EXTENSIONS: Final[dict[str, tuple[TagOption, ...]]] = {
+    "expression": tuple(
+        _adult_option(*value)
+        for value in (
+            (
+                "adult_expression_coy_longing",
+                "含羞渴望（18+）",
+                "consensual adult coy intimate longing expression",
+            ),
+            (
+                "adult_expression_expectant_gaze",
+                "期待親近（18+）",
+                "consensual adult expectant intimate gaze",
+            ),
+            (
+                "adult_expression_tender_adoration",
+                "深情愛慕（18+）",
+                "consensual adult intimate gaze filled with tender adoration",
+            ),
+            (
+                "adult_expression_contented_smile",
+                "滿足輕笑（18+）",
+                "consensual adult contented intimate smile",
+            ),
+        )
     ),
 }
 
@@ -6968,7 +7258,7 @@ def filter_adult_options(
     return tuple(filtered)
 
 
-CHARACTER_CATEGORIES: Final[tuple[TagCategory, ...]] = _extend_categories(
+_CHARACTER_CATEGORIES_WITH_V11: Final[tuple[TagCategory, ...]] = _extend_categories(
     _extend_categories(
         _extend_categories(
             _extend_categories(
@@ -6993,6 +7283,7 @@ CHARACTER_CATEGORIES: Final[tuple[TagCategory, ...]] = _extend_categories(
                                     *_ADDITIONAL_CHARACTER_CATEGORIES,
                                     *_NEW_CHARACTER_CATEGORIES,
                                     *_CHARACTER_CATEGORIES_V9,
+                                    *_LAYERED_CLOTHING_CATEGORIES,
                                 ),
                                 _CHARACTER_OPTION_EXTENSIONS_V4,
                             ),
@@ -7009,6 +7300,10 @@ CHARACTER_CATEGORIES: Final[tuple[TagCategory, ...]] = _extend_categories(
         _CHARACTER_OPTION_EXTENSIONS_V10,
     ),
     _CHARACTER_OPTION_EXTENSIONS_V11,
+)
+CHARACTER_CATEGORIES: Final[tuple[TagCategory, ...]] = _extend_categories(
+    _CHARACTER_CATEGORIES_WITH_V11,
+    _ADULT_EXPRESSION_GRID_OPTION_EXTENSIONS,
 )
 BACKGROUND_CATEGORIES: Final[tuple[TagCategory, ...]] = _extend_categories(
     _extend_categories(
@@ -8310,6 +8605,54 @@ _ANIMAL_TAXONOMY_OWNED_TRAIT_KEYS: Final[frozenset[str]] = frozenset(
 )
 
 
+_HOSIERY_ANKLE_TO_THIGH_LENGTHS: Final[tuple[str, ...]] = (
+    "hosiery_ankle_length",
+    "hosiery_quarter_length",
+    "hosiery_crew_length",
+    "hosiery_mid_calf_length",
+    "hosiery_knee_high_length",
+    "hosiery_over_knee_length",
+    "hosiery_thigh_high_length",
+)
+_HOSIERY_CREW_TO_THIGH_LENGTHS: Final[tuple[str, ...]] = (
+    "hosiery_crew_length",
+    "hosiery_mid_calf_length",
+    "hosiery_knee_high_length",
+    "hosiery_over_knee_length",
+    "hosiery_thigh_high_length",
+)
+_HOSIERY_LEG_WARMER_LENGTHS: Final[tuple[str, ...]] = (
+    "hosiery_mid_calf_length",
+    "hosiery_knee_high_length",
+    "hosiery_over_knee_length",
+    "hosiery_thigh_high_length",
+)
+_HOSIERY_STOCKING_LENGTHS: Final[tuple[str, ...]] = (
+    "hosiery_over_knee_length",
+    "hosiery_thigh_high_length",
+)
+_HOSIERY_THIGH_HIGH_ONLY: Final[tuple[str, ...]] = ("hosiery_thigh_high_length",)
+_HOSIERY_WAIST_HIGH_ONLY: Final[tuple[str, ...]] = ("hosiery_waist_high_length",)
+HOSIERY_ALLOWED_LENGTHS: Final[Mapping[str, tuple[str, ...]]] = {
+    "socks": _HOSIERY_ANKLE_TO_THIGH_LENGTHS,
+    "stockings": _HOSIERY_STOCKING_LENGTHS,
+    "garter_stockings": _HOSIERY_THIGH_HIGH_ONLY,
+    "pantyhose": _HOSIERY_WAIST_HIGH_ONLY,
+    "tights": _HOSIERY_WAIST_HIGH_ONLY,
+    "leg_warmers": _HOSIERY_LEG_WARMER_LENGTHS,
+    "cable_knit_socks": _HOSIERY_ANKLE_TO_THIGH_LENGTHS,
+    "compression_socks": _HOSIERY_CREW_TO_THIGH_LENGTHS,
+    "adult_accessory_lace_top_stockings": _HOSIERY_STOCKING_LENGTHS,
+    "adult_accessory_fishnet_stockings": _HOSIERY_STOCKING_LENGTHS,
+    "adult_accessory_fishnet_pantyhose": _HOSIERY_WAIST_HIGH_ONLY,
+    "adult_accessory_seamed_stockings": _HOSIERY_STOCKING_LENGTHS,
+    "adult_accessory_suspender_tights": _HOSIERY_WAIST_HIGH_ONLY,
+    "adult_hosiery_stay_up_stockings": _HOSIERY_THIGH_HIGH_ONLY,
+    "adult_hosiery_cuban_heel_stockings": _HOSIERY_STOCKING_LENGTHS,
+    "adult_hosiery_wet_look_tights": _HOSIERY_WAIST_HIGH_ONLY,
+}
+
+
 _COMPATIBILITY_RULES: Final[tuple[_CompatibilityRule, ...]] = (
     *(
         _compatibility("beast_humanoid_species", detail_category, allowed_by_species)
@@ -8318,6 +8661,11 @@ _COMPATIBILITY_RULES: Final[tuple[_CompatibilityRule, ...]] = (
     *(
         _compatibility("furry_species", detail_category, allowed_by_species)
         for detail_category, allowed_by_species in _FURRY_DETAIL_RULES.items()
+    ),
+    _compatibility(
+        "hosiery_style",
+        "hosiery_length",
+        HOSIERY_ALLOWED_LENGTHS,
     ),
     # Hair is sampled as length -> style -> bangs.  Manual combinations remain
     # untouched; these rules apply only to random completion and rerolls.
@@ -11045,7 +11393,23 @@ def _validate_selection_coherence(
         if needs_single & set(patterns) and color_count != 1:
             raise ValueError("單一純色配置只能搭配 1 種顏色")
 
-    outfits = set(selections.get("outfit_archetype", ()))
+    outfit_anchors = set(selections.get("outfit_archetype", ()))
+    layered_garments = {
+        option_key
+        for category_key in _LAYERED_CORE_GARMENT_CATEGORY_KEYS
+        for option_key in selections.get(category_key, ())
+    }
+    if outfit_anchors & _CLOTHINGLESS_OUTFITS and layered_garments:
+        raise ValueError("裸體或人體彩繪不能同時搭配覆蓋身體的服裝")
+    if "topless" in outfit_anchors and any(
+        selections.get(category_key) for category_key in _UPPER_LAYERED_GARMENT_CATEGORY_KEYS
+    ):
+        raise ValueError("上身裸體不能同時搭配上身覆蓋服裝")
+    for state_key, garment_key in _LAYERED_STATE_TARGETS:
+        if selections.get(state_key) and not selections.get(garment_key):
+            raise ValueError("選擇服裝狀態前，必須先選擇對應服裝")
+
+    outfits = _selected_outfit_keys(selections)
     has_upper_visibility_option = any(
         option_key in selections.get(option_category, ())
         for option_category, option_key in _UPPER_VISIBILITY_OPTION_KEYS
@@ -11056,15 +11420,15 @@ def _validate_selection_coherence(
     has_lower_explicit_action = any(
         selections.get(key) for key in _LOWER_ADULT_EXPLICIT_ACTION_CATEGORIES
     )
-    if outfits and has_upper and not (outfits & _UPPER_ANATOMY_OUTFITS):
+    if outfits and has_upper and not _upper_anatomy_is_visible(selections):
         raise ValueError("所選服裝無法呈現胸部成人細節，請改用可見的成人服裝")
-    if outfits and has_upper_visibility_option and not (outfits & _UPPER_ANATOMY_OUTFITS):
+    if outfits and has_upper_visibility_option and not _upper_anatomy_is_visible(selections):
         raise ValueError("所選服裝無法呈現乳頭飾品，請改用胸部可見的成人服裝")
-    if has_lower and not (outfits & _LOWER_ANATOMY_OUTFITS):
+    if has_lower and not _lower_anatomy_is_visible(selections):
         raise ValueError("所選服裝無法呈現外陰成人細節，請改用可見的成人服裝")
-    if outfits and has_breast_action and not (outfits & _EXPOSED_BREAST_ACTION_OUTFITS):
+    if outfits and has_breast_action and not _breast_action_is_visible(selections):
         raise ValueError("所選服裝無法呈現胸部成人動作，請改用胸部裸露的成人服裝")
-    if has_lower_explicit_action and not (outfits & _LOWER_EXPLICIT_ACTION_OUTFITS):
+    if has_lower_explicit_action and not _lower_explicit_action_is_visible(selections):
         raise ValueError("所選服裝無法呈現外陰或插入動作，請改用裸體或人體藝術彩繪")
 
 
@@ -11156,10 +11520,22 @@ _INCAPACITATED_CONFLICT_OPTION_KEYS_BY_CATEGORY: Final[
         for option in category.options
         if option.adult_only
     )
-    for category_key in ("accessories", "pose", "framing")
+    for category_key in (
+        "accessories",
+        "intimate_accessories",
+        "adult_toys",
+        "outfit_upper_state",
+        "outfit_lower_state",
+        "outfit_bra_state",
+        "outfit_underwear_state",
+        "pose",
+        "framing",
+    )
 }
 if any(not keys for keys in _INCAPACITATED_CONFLICT_OPTION_KEYS_BY_CATEGORY.values()):
-    raise ValueError("失去意識安全索引必須涵蓋成人配件、姿勢與構圖")
+    raise ValueError(
+        "失去意識安全索引必須涵蓋成人服裝狀態、配件、用品、姿勢與構圖"
+    )
 INCAPACITATED_CONFLICT_OPTION_KEYS_BY_CATEGORY: Final[
     Mapping[str, frozenset[str]]
 ] = _INCAPACITATED_CONFLICT_OPTION_KEYS_BY_CATEGORY
@@ -11272,7 +11648,7 @@ def _effective_character_states(
             for key in selected
             if key not in _ADULT_CONSENT_INCOMPATIBLE_CHARACTER_STATES
         )
-    if set(selections.get("outfit_archetype", ())) & _CLOTHINGLESS_OUTFITS:
+    if _selected_outfit_keys(selections) & _CLOTHINGLESS_OUTFITS:
         selected = tuple(
             key for key in selected if key not in _CLOTHING_DEPENDENT_CHARACTER_STATES
         )
@@ -12032,8 +12408,8 @@ _UPPER_VISIBILITY_OPTION_KEYS: Final[frozenset[tuple[str, str]]] = frozenset(
     {
         ("accessories", "nipple_jewelry"),
         ("accessories", "adult_accessory_nipple_clamps"),
-        ("accessories", "adult_accessory_nipple_pasties"),
-        ("accessories", "adult_accessory_chain_pasties"),
+        ("intimate_accessories", "adult_accessory_nipple_pasties"),
+        ("intimate_accessories", "adult_accessory_chain_pasties"),
     }
 )
 _LOWER_ANATOMY_OUTFITS: Final[frozenset[str]] = frozenset(
@@ -12075,6 +12451,176 @@ _OPTIONAL_ADULT_CATEGORIES: Final[frozenset[str]] = (
     | _OPTIONAL_ADULT_STATE_CATEGORIES
 )
 
+_LAYERED_CLOTHING_CATEGORY_KEYS: Final[frozenset[str]] = frozenset(
+    category.key for category in _LAYERED_CLOTHING_CATEGORIES
+)
+_LAYERED_PRIMARY_GARMENT_CATEGORY_KEYS: Final[tuple[str, ...]] = (
+    "outfit_upper",
+    "outfit_lower",
+    "outfit_one_piece",
+    "outfit_sleepwear",
+    "outfit_swimwear",
+    "outfit_lingerie",
+)
+_LAYERED_ACCESSORY_CATEGORY_KEYS: Final[tuple[str, ...]] = (
+    "accessory_head_hair",
+    "accessory_face_neck",
+    "accessory_hand_arm",
+    "accessory_waist_body",
+    "accessory_bags",
+)
+_LAYERED_ADULT_ACCESSORY_CATEGORY_KEYS: Final[tuple[str, ...]] = (
+    "intimate_accessories",
+    "adult_toys",
+)
+_LAYERED_STATE_TARGETS: Final[tuple[tuple[str, str], ...]] = (
+    ("outfit_upper_state", "outfit_upper"),
+    ("outfit_lower_state", "outfit_lower"),
+    ("outfit_bra_state", "outfit_bra"),
+    ("outfit_underwear_state", "outfit_underwear"),
+)
+_LAYERED_CORE_GARMENT_CATEGORY_KEYS: Final[frozenset[str]] = frozenset(
+    {
+        "outfit_upper",
+        "outfit_lower",
+        "outfit_one_piece",
+        "outfit_outerwear",
+        "outfit_bra",
+        "outfit_underwear",
+        "outfit_sleepwear",
+        "outfit_uniform_sport",
+        "outfit_swimwear",
+        "outfit_lingerie",
+    }
+)
+_UPPER_LAYERED_GARMENT_CATEGORY_KEYS: Final[frozenset[str]] = frozenset(
+    {
+        "outfit_upper",
+        "outfit_one_piece",
+        "outfit_outerwear",
+        "outfit_bra",
+        "outfit_sleepwear",
+        "outfit_uniform_sport",
+        "outfit_swimwear",
+        "outfit_lingerie",
+    }
+)
+_LOWER_LAYERED_GARMENT_CATEGORY_KEYS: Final[frozenset[str]] = frozenset(
+    {
+        "outfit_lower",
+        "outfit_one_piece",
+        "outfit_underwear",
+        "outfit_sleepwear",
+        "outfit_uniform_sport",
+        "outfit_swimwear",
+        "outfit_lingerie",
+    }
+)
+_UPPER_VISIBILITY_GARMENT_CATEGORY_KEYS: Final[frozenset[str]] = frozenset(
+    {"outfit_archetype", *_UPPER_LAYERED_GARMENT_CATEGORY_KEYS}
+)
+_LOWER_VISIBILITY_GARMENT_CATEGORY_KEYS: Final[frozenset[str]] = frozenset(
+    {"outfit_archetype", *_LOWER_LAYERED_GARMENT_CATEGORY_KEYS}
+)
+_LAYERED_RANDOM_EXCLUDED_OPTIONS: Final[Mapping[str, frozenset[str]]] = {
+    "outfit_sleepwear": frozenset(
+        {"pajama_top", "pajama_pants", "pajama_shorts"}
+    ),
+    "outfit_swimwear": frozenset({"rash_guard"}),
+}
+_OUTFIT_SELECTION_CATEGORY_KEYS: Final[frozenset[str]] = frozenset(
+    {
+        "outfit_archetype",
+        "outfit_upper",
+        "outfit_lower",
+        "outfit_one_piece",
+        "outfit_outerwear",
+        "outfit_bra",
+        "outfit_underwear",
+        "outfit_sleepwear",
+        "outfit_uniform_sport",
+        "outfit_swimwear",
+        "outfit_lingerie",
+    }
+)
+
+
+def _selected_outfit_keys(
+    selections: Mapping[str, Sequence[str]],
+) -> set[str]:
+    """Collect both the legacy outfit anchor and every layered garment slot."""
+
+    return {
+        option_key
+        for category_key in _OUTFIT_SELECTION_CATEGORY_KEYS
+        for option_key in selections.get(category_key, ())
+    }
+
+
+def _selected_region_garment_keys(
+    selections: Mapping[str, Sequence[str]],
+    category_keys: frozenset[str],
+    *,
+    ignored_keys: frozenset[str] = frozenset(),
+) -> set[str]:
+    return {
+        option_key
+        for category_key in category_keys
+        for option_key in selections.get(category_key, ())
+        if option_key not in ignored_keys
+    }
+
+
+def _garment_region_is_visible(
+    selections: Mapping[str, Sequence[str]],
+    category_keys: frozenset[str],
+    visible_keys: frozenset[str],
+    *,
+    ignored_keys: frozenset[str] = frozenset(),
+) -> bool:
+    selected = _selected_region_garment_keys(
+        selections,
+        category_keys,
+        ignored_keys=ignored_keys,
+    )
+    return bool(selected) and selected <= visible_keys
+
+
+def _upper_anatomy_is_visible(selections: Mapping[str, Sequence[str]]) -> bool:
+    return _garment_region_is_visible(
+        selections,
+        _UPPER_VISIBILITY_GARMENT_CATEGORY_KEYS,
+        _UPPER_ANATOMY_OUTFITS,
+    )
+
+
+def _breast_action_is_visible(selections: Mapping[str, Sequence[str]]) -> bool:
+    return _garment_region_is_visible(
+        selections,
+        _UPPER_VISIBILITY_GARMENT_CATEGORY_KEYS,
+        _EXPOSED_BREAST_ACTION_OUTFITS,
+    )
+
+
+def _lower_anatomy_is_visible(selections: Mapping[str, Sequence[str]]) -> bool:
+    return _garment_region_is_visible(
+        selections,
+        _LOWER_VISIBILITY_GARMENT_CATEGORY_KEYS,
+        _LOWER_ANATOMY_OUTFITS,
+        ignored_keys=frozenset({"topless"}),
+    )
+
+
+def _lower_explicit_action_is_visible(
+    selections: Mapping[str, Sequence[str]],
+) -> bool:
+    return _garment_region_is_visible(
+        selections,
+        _LOWER_VISIBILITY_GARMENT_CATEGORY_KEYS,
+        _LOWER_EXPLICIT_ACTION_OUTFITS,
+        ignored_keys=frozenset({"topless"}),
+    )
+
 
 def _color_candidate_is_compatible(
     category_key: str,
@@ -12106,26 +12652,46 @@ def _adult_anatomy_candidate_is_compatible(
     candidate: str,
     selections: Mapping[str, tuple[str, ...]],
 ) -> bool:
-    selected_outfits = set(selections.get("outfit_archetype", ()))
+    selected_outfits = _selected_outfit_keys(selections)
     if (category_key, candidate) in _UPPER_VISIBILITY_OPTION_KEYS and selected_outfits:
-        return bool(selected_outfits & _UPPER_ANATOMY_OUTFITS)
+        return _upper_anatomy_is_visible(selections)
     if category_key in _UPPER_ADULT_ANATOMY_CATEGORIES and selected_outfits:
-        return bool(selected_outfits & _UPPER_ANATOMY_OUTFITS)
+        return _upper_anatomy_is_visible(selections)
     if category_key in _LOWER_ADULT_ANATOMY_CATEGORIES:
-        return bool(selected_outfits & _LOWER_ANATOMY_OUTFITS)
+        return _lower_anatomy_is_visible(selections)
     if category_key in _BREAST_ADULT_ACTION_CATEGORIES and selected_outfits:
-        return bool(selected_outfits & _EXPOSED_BREAST_ACTION_OUTFITS)
+        return _breast_action_is_visible(selections)
     if category_key in _LOWER_ADULT_POSE_CATEGORIES:
         return True
     if category_key in _LOWER_ADULT_EXPLICIT_ACTION_CATEGORIES:
-        return bool(selected_outfits & _LOWER_EXPLICIT_ACTION_OUTFITS)
-    if category_key != "outfit_archetype":
+        return _lower_explicit_action_is_visible(selections)
+    if category_key not in _OUTFIT_SELECTION_CATEGORY_KEYS:
         return True
+    trial_selections = dict(selections)
+    if category_key == "outfit_archetype":
+        trial_selections[category_key] = (candidate,)
+    else:
+        trial_selections[category_key] = tuple(
+            dict.fromkeys((*selections.get(category_key, ()), candidate))
+        )
+    trial_anchors = set(trial_selections.get("outfit_archetype", ()))
+    trial_layered_garments = {
+        option_key
+        for layered_key in _LAYERED_CORE_GARMENT_CATEGORY_KEYS
+        for option_key in trial_selections.get(layered_key, ())
+    }
+    if trial_anchors & _CLOTHINGLESS_OUTFITS and trial_layered_garments:
+        return False
+    if "topless" in trial_anchors and any(
+        trial_selections.get(layered_key)
+        for layered_key in _UPPER_LAYERED_GARMENT_CATEGORY_KEYS
+    ):
+        return False
     has_upper_visibility_option = any(
         option_key in selections.get(option_category, ())
         for option_category, option_key in _UPPER_VISIBILITY_OPTION_KEYS
     )
-    if has_upper_visibility_option and candidate not in _UPPER_ANATOMY_OUTFITS:
+    if has_upper_visibility_option and not _upper_anatomy_is_visible(trial_selections):
         return False
     has_upper = any(selections.get(key) for key in _UPPER_ADULT_ANATOMY_CATEGORIES)
     has_lower = any(selections.get(key) for key in _LOWER_ADULT_ANATOMY_CATEGORIES)
@@ -12133,13 +12699,15 @@ def _adult_anatomy_candidate_is_compatible(
     has_lower_explicit_action = any(
         selections.get(key) for key in _LOWER_ADULT_EXPLICIT_ACTION_CATEGORIES
     )
-    if has_upper and candidate not in _UPPER_ANATOMY_OUTFITS:
+    if has_upper and not _upper_anatomy_is_visible(trial_selections):
         return False
-    if has_breast_action and candidate not in _EXPOSED_BREAST_ACTION_OUTFITS:
+    if has_breast_action and not _breast_action_is_visible(trial_selections):
         return False
-    if has_lower_explicit_action and candidate not in _LOWER_EXPLICIT_ACTION_OUTFITS:
+    if has_lower_explicit_action and not _lower_explicit_action_is_visible(
+        trial_selections
+    ):
         return False
-    return not has_lower or candidate in _LOWER_ANATOMY_OUTFITS
+    return not has_lower or _lower_anatomy_is_visible(trial_selections)
 
 
 def _animal_taxonomy_candidate_is_compatible(
@@ -12189,8 +12757,11 @@ def _state_candidate_is_compatible(
     selections: Mapping[str, tuple[str, ...]],
 ) -> bool:
     selected_states = set(selections.get("character_state", ()))
-    selected_outfits = set(selections.get("outfit_archetype", ()))
+    selected_outfits = _selected_outfit_keys(selections)
     selected_poses = set(selections.get("pose", ()))
+    for state_key, garment_key in _LAYERED_STATE_TARGETS:
+        if category_key == state_key and not selections.get(garment_key):
+            return False
     if category_key == "expression" and selections.get("adult_female_expression"):
         return False
     if category_key == "adult_female_expression" and selections.get("expression"):
@@ -12381,6 +12952,265 @@ def _covered_random_groups(
     )
 
 
+def _set_random_layered_option(
+    category_key: str,
+    category_by_key: Mapping[str, TagCategory],
+    selection_state: dict[str, tuple[str, ...]],
+    result: SelectionResult,
+    *,
+    picker: random.Random,
+) -> bool:
+    """Fill one empty layered slot without changing an author-selected value."""
+
+    category = category_by_key.get(category_key)
+    if category is None or selection_state.get(category_key):
+        return False
+    candidates = tuple(
+        option
+        for option in category.options
+        if option.key
+        not in _LAYERED_RANDOM_EXCLUDED_OPTIONS.get(category_key, frozenset())
+        if _candidate_is_compatible(category_key, option.key, selection_state)
+    )
+    if not candidates:
+        return False
+    option = picker.choice(candidates)
+    selected = (option.key,)
+    selection_state[category_key] = selected
+    result[category_key] = selected
+    return True
+
+
+def _has_layered_primary_garment(
+    selection_state: Mapping[str, tuple[str, ...]],
+    outfit_anchors: set[str],
+) -> bool:
+    if outfit_anchors & _CLOTHINGLESS_OUTFITS:
+        return True
+    if "topless" in outfit_anchors:
+        return bool(selection_state.get("outfit_lower"))
+    return bool(
+        (
+            selection_state.get("outfit_upper")
+            and selection_state.get("outfit_lower")
+        )
+        or selection_state.get("outfit_one_piece")
+        or selection_state.get("outfit_sleepwear")
+        or selection_state.get("outfit_swimwear")
+        or selection_state.get("outfit_lingerie")
+    )
+
+
+def _apply_layered_clothing_recipe(
+    category_by_key: Mapping[str, TagCategory],
+    selection_state: dict[str, tuple[str, ...]],
+    result: SelectionResult,
+    *,
+    picker: random.Random,
+) -> bool:
+    """Create one coherent outfit and a bounded set of optional accessories.
+
+    The legacy single-select outfit remains the visual theme and adult-body
+    visibility anchor.  Individual garments use separate multi-select slots,
+    while this recipe guarantees a random result never consists of underwear,
+    hosiery, or accessories alone.
+    """
+
+    if not (_LAYERED_CLOTHING_CATEGORY_KEYS & category_by_key.keys()):
+        return True
+
+    outfit_anchors = set(selection_state.get("outfit_archetype", ()))
+    clothingless = bool(outfit_anchors & _CLOTHINGLESS_OUTFITS)
+    topless = "topless" in outfit_anchors
+    lingerie_theme = bool(
+        outfit_anchors
+        & {
+            "lingerie",
+            "sheer_lingerie",
+            "bondage_fashion",
+            "adult_outfit_open_robe",
+            "adult_outfit_transparent_bodystocking",
+        }
+    )
+    swim_theme = "swimwear" in outfit_anchors
+
+    if not clothingless and not _has_layered_primary_garment(
+        selection_state,
+        outfit_anchors,
+    ):
+        if topless or selection_state.get("outfit_upper"):
+            _set_random_layered_option(
+                "outfit_lower",
+                category_by_key,
+                selection_state,
+                result,
+                picker=picker,
+            )
+        elif selection_state.get("outfit_lower"):
+            _set_random_layered_option(
+                "outfit_upper",
+                category_by_key,
+                selection_state,
+                result,
+                picker=picker,
+            )
+        else:
+            available_branches = [
+                branch
+                for branch, required_key in (
+                    ("separates", "outfit_upper"),
+                    ("one_piece", "outfit_one_piece"),
+                    ("sleepwear", "outfit_sleepwear"),
+                    ("swimwear", "outfit_swimwear"),
+                    ("lingerie", "outfit_lingerie"),
+                )
+                if required_key in category_by_key
+            ]
+            if lingerie_theme and "lingerie" in available_branches:
+                branch = "lingerie"
+            elif swim_theme and "swimwear" in available_branches:
+                branch = "swimwear"
+            else:
+                weighted = tuple(
+                    (candidate, weight)
+                    for candidate, weight in (
+                        ("separates", 50),
+                        ("one_piece", 24),
+                        ("sleepwear", 10),
+                        ("swimwear", 12),
+                        ("lingerie", 4),
+                    )
+                    if candidate in available_branches
+                )
+                branch = picker.choices(
+                    tuple(candidate for candidate, _weight in weighted),
+                    weights=tuple(weight for _candidate, weight in weighted),
+                    k=1,
+                )[0]
+            if branch == "separates":
+                for category_key in ("outfit_upper", "outfit_lower"):
+                    _set_random_layered_option(
+                        category_key,
+                        category_by_key,
+                        selection_state,
+                        result,
+                        picker=picker,
+                    )
+            else:
+                branch_category = {
+                    "one_piece": "outfit_one_piece",
+                    "sleepwear": "outfit_sleepwear",
+                    "swimwear": "outfit_swimwear",
+                    "lingerie": "outfit_lingerie",
+                }[branch]
+                _set_random_layered_option(
+                    branch_category,
+                    category_by_key,
+                    selection_state,
+                    result,
+                    picker=picker,
+                )
+
+    has_swimwear = bool(selection_state.get("outfit_swimwear"))
+    if not clothingless:
+        if picker.random() < 0.35:
+            _set_random_layered_option(
+                "outfit_outerwear",
+                category_by_key,
+                selection_state,
+                result,
+                picker=picker,
+            )
+        if not has_swimwear and picker.random() < 0.5:
+            _set_random_layered_option(
+                "outfit_bra",
+                category_by_key,
+                selection_state,
+                result,
+                picker=picker,
+            )
+        if not has_swimwear and picker.random() < 0.55:
+            _set_random_layered_option(
+                "outfit_underwear",
+                category_by_key,
+                selection_state,
+                result,
+                picker=picker,
+            )
+        added_hosiery = picker.random() < 0.4 and _set_random_layered_option(
+            "hosiery_style",
+            category_by_key,
+            selection_state,
+            result,
+            picker=picker,
+        )
+        if added_hosiery or selection_state.get("hosiery_style"):
+            _set_random_layered_option(
+                "hosiery_length",
+                category_by_key,
+                selection_state,
+                result,
+                picker=picker,
+            )
+        if picker.random() < 0.8:
+            _set_random_layered_option(
+                "footwear",
+                category_by_key,
+                selection_state,
+                result,
+                picker=picker,
+            )
+
+        empty_accessory_categories = [
+            key
+            for key in _LAYERED_ACCESSORY_CATEGORY_KEYS
+            if key in category_by_key and not selection_state.get(key)
+        ]
+        picker.shuffle(empty_accessory_categories)
+        accessory_count = min(
+            len(empty_accessory_categories),
+            picker.randint(1, 3),
+        )
+        for category_key in empty_accessory_categories[:accessory_count]:
+            _set_random_layered_option(
+                category_key,
+                category_by_key,
+                selection_state,
+                result,
+                picker=picker,
+            )
+
+    for category_key in _LAYERED_ADULT_ACCESSORY_CATEGORY_KEYS:
+        if picker.random() < 0.24:
+            _set_random_layered_option(
+                category_key,
+                category_by_key,
+                selection_state,
+                result,
+                picker=picker,
+            )
+
+    state_candidates = [
+        state_key
+        for state_key, garment_key in _LAYERED_STATE_TARGETS
+        if state_key in category_by_key
+        and selection_state.get(garment_key)
+        and not selection_state.get(state_key)
+    ]
+    picker.shuffle(state_candidates)
+    state_count = min(len(state_candidates), picker.randint(0, 2))
+    for category_key in state_candidates[:state_count]:
+        _set_random_layered_option(
+            category_key,
+            category_by_key,
+            selection_state,
+            result,
+            picker=picker,
+        )
+
+    return _has_layered_primary_garment(selection_state, outfit_anchors)
+
+
 def _randomize_attempt(
     categories: Sequence[TagCategory],
     locked: Mapping[str, tuple[str, ...]],
@@ -12434,6 +13264,10 @@ def _randomize_attempt(
     complete = True
     for category in _ordered_random_categories(categories):
         if category.key in locked:
+            continue
+        if category.key in _LAYERED_CLOTHING_CATEGORY_KEYS:
+            selection_state[category.key] = ()
+            result[category.key] = ()
             continue
         if (
             expression_authority is not None
@@ -12535,6 +13369,12 @@ def _randomize_attempt(
         selected_multi = tuple(chosen)
         selection_state[category.key] = selected_multi
         result[category.key] = selected_multi
+    complete = _apply_layered_clothing_recipe(
+        category_by_key,
+        selection_state,
+        result,
+        picker=picker,
+    ) and complete
     if _covered_random_groups(categories, result, required_groups) != frozenset(
         required_groups
     ):
@@ -12664,6 +13504,7 @@ __all__ = [
     "CHARACTER_IDENTITY_MODES",
     "CHARACTER_IDENTITY_MODE_LABELS_ZH",
     "CHARACTER_STATE_EXPRESSION_OVERRIDE_KEYS",
+    "HOSIERY_ALLOWED_LENGTHS",
     "INCAPACITATED_CHARACTER_STATE_KEYS",
     "INCAPACITATED_CONFLICT_OPTION_KEYS_BY_CATEGORY",
     "NEGATIVE_CATEGORIES",
